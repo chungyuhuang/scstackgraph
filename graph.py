@@ -1,6 +1,5 @@
 import graphviz as gv
 import functools
-import sys
 
 
 def main():
@@ -8,19 +7,18 @@ def main():
 
 
 def init_graph():
-    stack_push_one = ['PUSH', 'DUP', 'JUMPDEST', 'MLOAD', 'CALLER', 'CALLVALUE', 'GAS']
+    stack_push_one = ['PUSH', 'DUP', 'MLOAD', 'CALLER', 'CALLVALUE', 'GAS']
     stack_pop_one = ['POP', 'LT', 'GT', 'EQ', 'AND', 'OR', 'XOR', 'ADD', 'SUB', 'MUL', 'DIV', 'EXP']
-    stack_pop_two = ['MSTORE', 'SSTORE']
-    stack_unchange =['SWAP', 'NOT', 'ISZERO', 'EXTCODESIZE']
+    stack_pop_two = ['MSTORE', 'SSTORE', 'SLOAD']
+    stack_unchange =['SWAP', 'JUMPDEST', 'NOT', 'ISZERO', 'EXTCODESIZE']
 
     nodes = []
     edges = []
     push_value_list = []
 
     stack_header = '0'
-    one_before_header = '[-1]'
-    two_before_header = '[-2]'
-    stack_size = 0
+    stack_size = '0'
+    edge_color = 'black'
 
     with open('test', 'r') as f:
         for line in f:
@@ -31,75 +29,57 @@ def init_graph():
     with open('test', 'r') as f:
         for idx, line in enumerate(f):
             s = line.rstrip().split(' ')
-            node_label = str(s[0])
-            instruction = s[1]
+            node_header = str(s[0])
+            instruction = s[1].strip()
+            # print(instruction)
             if len(s) == 3:
                 if s[2] == 'Opcode)':
                     continue
                 else:
                     num = int(s[2], 16)
                     push_value_list.append(num)
+            if s[1] in ['JUMP', 'JUMPI']:
+                print(s[1])
+                jump_from = stack_header
+                jump_to = '[' + str(push_value_list[-1]) + ']'
+                edge_color = 'blue'
+                if s[1] == 'JUMP':
+                    stack_size = '-1'
+                else:
+                    stack_size = '-2'
+                edges.append(((jump_from, jump_to),
+                              {'label': 'step ' + str(idx + 1) + ' ' + instruction + '\nstack size ' + stack_size,
+                               'color': edge_color}))
+                continue
             for key_world in stack_push_one:
                 if key_world in instruction:
-                    if key_world == 'JUMPDEST':
-                        edges.append(((stack_header, node_label),
-                                      {'label': 'step' + str(idx + 1) + instruction}))
-                    else:
-                        two_before_header = one_before_header
-                        one_before_header = stack_header
-                        stack_header = node_label
-                        stack_size += 1
-                    # label_list.append(stack_header)
-                        # print(nodes[-1])
-                    # if nodes[-1] == stack_header | len(nodes) == 0:
-                        nodes.append((stack_header, {'label': str(stack_size)}))
-                        edges.append(((one_before_header, stack_header),
-                                      {'label': 'step' + str(idx + 1) + instruction, 'color': 'red'}))
+                    edge_color = 'red'
+                    stack_size = '+1'
                     break
             for key_world in stack_pop_two:
                 if key_world in instruction:
-                    # index_of_header = label_list.index(one_before_header)
-                    tmp = one_before_header
-                    # if len(nodes) < 4:
-                    #     one_before_header = '[-1]'
-                    # else:
-                    one_before_header = stack_header
-                    stack_header = two_before_header
-                    two_before_header = tmp
-                    edges.append(((one_before_header, two_before_header),
-                                  {'label': 'step' + str(idx + 1) + instruction}))
-                    stack_size -= 2
+                    edge_color = 'orange'
+                    stack_size = '-2'
                     break
             for key_world in stack_pop_one:
                 if key_world in instruction:
                     if instruction.rstrip() != 'SSTORE':
                         if instruction.rstrip() != 'JUMPI':
                             if instruction.rstrip() != 'JUMPDEST':
-                                two_before_header = one_before_header
-                                one_before_header = stack_header
-                                stack_header = two_before_header
-                                edges.append(((one_before_header, stack_header),
-                                              {'label': 'step' + str(idx + 1) + instruction,
-                                               'color': 'green'}))
-                                # stack_header = one_before_header
-                                # if len(nodes) < 4:
-                                #     one_before_header = '[-1]'
-                                # else:
-                                #     one_before_header = nodes[-3][0]
-                                stack_size -= 1
+                                edge_color = 'green'
+                                stack_size = '-1'
                                 break
             for key_world in stack_unchange:
                 if key_world in instruction:
-                    # print('no change ', instruction)
-                    # two_before_header = one_before_header
-                    # one_before_header = stack_header
-                    edges.append(((stack_header, stack_header),
-                                  {'label': 'step' + str(idx + 1) + instruction}))
+                    edge_color = 'brown'
+                    stack_size = '+0'
                     break
-            if s[1] in ['JUMP', 'JUMPI']:
-                jump_from = stack_header
-                jump_to = '[' + str(push_value_list[-1]) + ']'
-                edges.append(((jump_from, jump_to), {'label': 'step' + str(idx + 1) + instruction}))
+            one_before_header = stack_header
+            stack_header = node_header
+            nodes.append(stack_header)
+            edges.append(((one_before_header, stack_header),
+                          {'label': 'step ' + str(idx + 1) + ' ' + instruction + '\nstack size ' + stack_size,
+                           'color': edge_color}))
     print(push_value_list)
     create_graph(nodes, edges)
 
