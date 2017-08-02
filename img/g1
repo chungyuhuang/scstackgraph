@@ -1,126 +1,89 @@
 digraph {
-	"[85]" [label="JUMPDEST[85]"]
-	"[114]" [label="JUMPDEST[114]"]
-	"[123]" [label="JUMPDEST[123]"]
-	"[124]" [label="JUMPDEST[124]"]
-	"[136]" [label="JUMPDEST[136]"]
-	"[85]"
-	"[87]"
-	"[88]"
-	"[89]"
-	"[90]"
-	"[92]"
-	"[95]"
-	"[96]"
-	"[97]"
-	"[98]"
-	"[99]"
-	"[101]"
-	"[104]"
-	"[106]"
-	"[107]"
-	"[108]"
-	"[109]"
-	"[110]"
-	"[112]"
-	"[114]"
-	"[116]"
-	"[118]"
-	"[119]"
-	"[120]"
-	"[121]"
-	"[122]"
-	"[123]"
-	"[124]"
-	"[125]"
-	"[126]"
-	"[128]"
-	"[129]"
-	"[130]"
-	"[131]"
-	"[132]"
-	"[134]"
-	"[136]"
-		0 -> "[85]" [label="step 1 JUMPDEST
-stack size +0" color=brown]
-		"[85]" -> "[87]" [label="step 2 PUSH1
-stack size +1" color=red]
-		"[87]" -> "[88]" [label="step 3 DUP2
-stack size +1" color=red]
-		"[88]" -> "[89]" [label="step 4 LT
-stack size -1" color=green]
-		"[89]" -> "[90]" [label="step 5 ISZERO
-stack size +0" color=brown]
-		"[90]" -> "[92]" [label="step 6 PUSH1
-stack size +1" color=red]
-		"[92]" -> "[136]" [label="step 7 JUMPI
-stack size -2" color=blue]
-		"[92]" -> "[95]" [label="step 8 PUSH1
-stack size +1" color=red]
-		"[95]" -> "[96]" [label="step 9 DUP1
-stack size +1" color=red]
-		"[96]" -> "[97]" [label="step 10 SLOAD
-stack size -2" color=orange]
-		"[97]" -> "[98]" [label="step 11 EQ
-stack size -1" color=green]
-		"[98]" -> "[99]" [label="step 12 ISZERO
-stack size +0" color=brown]
-		"[99]" -> "[101]" [label="step 13 PUSH1
-stack size +1" color=red]
-		"[101]" -> "[114]" [label="step 14 JUMPI
-stack size -2" color=blue]
-		"[101]" -> "[104]" [label="step 15 PUSH1
-stack size +1" color=red]
-		"[104]" -> "[106]" [label="step 16 PUSH1
-stack size +1" color=red]
-		"[106]" -> "[107]" [label="step 17 DUP2
-stack size +1" color=red]
-		"[107]" -> "[108]" [label="step 18 SWAP1
-stack size +0" color=brown]
-		"[108]" -> "[109]" [label="step 19 SSTORE
-stack size -2" color=orange]
-		"[109]" -> "[110]" [label="step 20 POP
-stack size -1" color=green]
-		"[110]" -> "[112]" [label="step 21 PUSH1
-stack size +1" color=red]
-		"[112]" -> "[123]" [label="step 22 JUMP
-stack size -1" color=blue]
-		"[112]" -> "[114]" [label="step 23 JUMPDEST
-stack size +0" color=brown]
-		"[114]" -> "[116]" [label="step 24 PUSH1
-stack size +1" color=red]
-		"[116]" -> "[118]" [label="step 25 PUSH1
-stack size +1" color=red]
-		"[118]" -> "[119]" [label="step 26 DUP2
-stack size +1" color=red]
-		"[119]" -> "[120]" [label="step 27 SWAP1
-stack size +0" color=brown]
-		"[120]" -> "[121]" [label="step 28 SSTORE
-stack size -2" color=orange]
-		"[121]" -> "[122]" [label="step 29 POP
-stack size -1" color=green]
-		"[122]" -> "[123]" [label="step 30 JUMPDEST
-stack size +0" color=brown]
-		"[123]" -> "[124]" [label="step 31 JUMPDEST
-stack size +0" color=brown]
-		"[124]" -> "[125]" [label="step 32 DUP1
-stack size +1" color=red]
-		"[125]" -> "[126]" [label="step 33 DUP1
-stack size +1" color=red]
-		"[126]" -> "[128]" [label="step 34 PUSH1
-stack size +1" color=red]
-		"[128]" -> "[129]" [label="step 35 ADD
-stack size -1" color=green]
-		"[129]" -> "[130]" [label="step 36 SWAP2
-stack size +0" color=brown]
-		"[130]" -> "[131]" [label="step 37 POP
-stack size -1" color=green]
-		"[131]" -> "[132]" [label="step 38 POP
-stack size -1" color=green]
-		"[132]" -> "[134]" [label="step 39 PUSH1
-stack size +1" color=red]
-		"[134]" -> "[85]" [label="step 40 JUMP
-stack size -1" color=blue]
-		"[134]" -> "[136]" [label="step 41 JUMPDEST
-stack size +0" color=brown]
+	"[85]" [label="JUMPDEST [85]" id=-1]
+	"[114]" [label="JUMPDEST [114]" id=-1]
+	"[123]" [label="JUMPDEST [123]" id=-1]
+	"[124]" [label="JUMPDEST [124]" id=-1]
+	"[136]" [label="JUMPDEST [136]" id=-1]
+	"[85]" [label=0 id=-1]
+	"[87]" [label=1 id=-1]
+	"[88]" [label=2 id=-1]
+	"[89]" [label=1 id=-1]
+	"[90]" [label=1 id=-1]
+	"[92]" [label=2 id=-1]
+	"[93]" [label=0 id=-1]
+	"[95]" [label=1 id=-1]
+	"[96]" [label=2 id=-1]
+	"[97]" [label=2 id=-1]
+	"[98]" [label=1 id=-1]
+	"[99]" [label=1 id=-1]
+	"[101]" [label=2 id=-1]
+	"[102]" [label=0 id=-1]
+	"[104]" [label=1 id=-1]
+	"[106]" [label=2 id=-1]
+	"[107]" [label=3 id=-1]
+	"[108]" [label=3 id=-1]
+	"[109]" [label=1 id=-1]
+	"[110]" [label=0 id=-1]
+	"[112]" [label=1 id=-1]
+	"[113]" [label=0 id=-1]
+	"[116]" [label=1 id=-1]
+	"[118]" [label=2 id=-1]
+	"[119]" [label=3 id=-1]
+	"[120]" [label=3 id=-1]
+	"[121]" [label=1 id=-1]
+	"[122]" [label=0 id=-1]
+	"[123]" [label=0 id=-1]
+	"[124]" [label=0 id=-1]
+	"[125]" [label=1 id=-1]
+	"[126]" [label=2 id=-1]
+	"[128]" [label=3 id=-1]
+	"[129]" [label=2 id=-1]
+	"[130]" [label=2 id=-1]
+	"[131]" [label=1 id=-1]
+	"[132]" [label=0 id=-1]
+	"[134]" [label=1 id=-1]
+	"[135]" [label=0 id=-1]
+		0 -> "[85]" [label="[85] JUMPDEST +0" color=brown id="+0"]
+		"[85]" -> "[87]" [label="[87] PUSH1 +1" color=red id="+1"]
+		"[87]" -> "[88]" [label="[88] DUP2 +1" color=red id="+1"]
+		"[88]" -> "[89]" [label="[89] LT -1" color=green id=-1]
+		"[89]" -> "[90]" [label="[90] ISZERO +0" color=brown id="+0"]
+		"[90]" -> "[92]" [label="[92] PUSH1 +1" color=red id="+1"]
+		"[92]" -> "[93]" [label="[93] JUMPI -2" color=blue id=-2]
+		"[93]" -> "[136]" [label=0 color=blue id=0]
+		"[93]" -> "[95]" [label="[95] PUSH1 +1" color=red id="+1"]
+		"[95]" -> "[96]" [label="[96] DUP1 +1" color=red id="+1"]
+		"[96]" -> "[97]" [label="[97] SLOAD +0" color=brown id="+0"]
+		"[97]" -> "[98]" [label="[98] EQ -1" color=green id=-1]
+		"[98]" -> "[99]" [label="[99] ISZERO +0" color=brown id="+0"]
+		"[99]" -> "[101]" [label="[101] PUSH1 +1" color=red id="+1"]
+		"[101]" -> "[102]" [label="[102] JUMPI -2" color=blue id=-2]
+		"[102]" -> "[114]" [label=0 color=blue id=0]
+		"[102]" -> "[104]" [label="[104] PUSH1 +1" color=red id="+1"]
+		"[104]" -> "[106]" [label="[106] PUSH1 +1" color=red id="+1"]
+		"[106]" -> "[107]" [label="[107] DUP2 +1" color=red id="+1"]
+		"[107]" -> "[108]" [label="[108] SWAP1 +0" color=brown id="+0"]
+		"[108]" -> "[109]" [label="[109] SSTORE -2" color=orange id=-2]
+		"[109]" -> "[110]" [label="[110] POP -1" color=green id=-1]
+		"[110]" -> "[112]" [label="[112] PUSH1 +1" color=red id="+1"]
+		"[112]" -> "[113]" [label="[113] JUMP -1" color=blue id=-1]
+		"[113]" -> "[123]" [label=0 color=blue id=0]
+		"[114]" -> "[116]" [label="[116] PUSH1 +1" color=red id="+1"]
+		"[116]" -> "[118]" [label="[118] PUSH1 +1" color=red id="+1"]
+		"[118]" -> "[119]" [label="[119] DUP2 +1" color=red id="+1"]
+		"[119]" -> "[120]" [label="[120] SWAP1 +0" color=brown id="+0"]
+		"[120]" -> "[121]" [label="[121] SSTORE -2" color=orange id=-2]
+		"[121]" -> "[122]" [label="[122] POP -1" color=green id=-1]
+		"[122]" -> "[123]" [label="[123] JUMPDEST +0" color=brown id="+0"]
+		"[123]" -> "[124]" [label="[124] JUMPDEST +0" color=brown id="+0"]
+		"[124]" -> "[125]" [label="[125] DUP1 +1" color=red id="+1"]
+		"[125]" -> "[126]" [label="[126] DUP1 +1" color=red id="+1"]
+		"[126]" -> "[128]" [label="[128] PUSH1 +1" color=red id="+1"]
+		"[128]" -> "[129]" [label="[129] ADD -1" color=green id=-1]
+		"[129]" -> "[130]" [label="[130] SWAP2 +0" color=brown id="+0"]
+		"[130]" -> "[131]" [label="[131] POP -1" color=green id=-1]
+		"[131]" -> "[132]" [label="[132] POP -1" color=green id=-1]
+		"[132]" -> "[134]" [label="[134] PUSH1 +1" color=red id="+1"]
+		"[134]" -> "[135]" [label="[135] JUMP -1" color=blue id=-1]
+		"[135]" -> "[85]" [label=0 color=blue id=0]
 }
