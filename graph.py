@@ -9,7 +9,10 @@ def main():
     init_graph(nodes, edges)
     print(nodes)
     print(edges)
+    count_stack_size(nodes, edges)
 
+
+def count_stack_size(nodes, edges):
     queue = deque([])
     start_idx = 0
 
@@ -45,8 +48,6 @@ def main():
                             child_node['id'] = int(f_id) + int(edge_weight)
                             check_c_id = child_node.get('id')
                             print(check_c_id)
-                            # if check_c_id > 4:
-                            #     break
                             if int(check_c_id) > 1024:
                                 break
                             else:
@@ -57,41 +58,12 @@ def main():
                         else:
                             is_jumpdest = 0
                             break
-                        # print('child node = ', n)
-                        # c_id = n[1].get('id')
-                        # print(f_id, edge_weight, c_id)
-                        # if int(f_id) + int(edge_weight) > int(c_id):
-                        #     child_node = n[1]
-                        #     child_node['id'] = int(f_id) + int(edge_weight)
-                        #     check_c_id = child_node.get('id')
-                        #     print(check_c_id)
-                        #     if check_c_id > 4:
-                        #         break
-                        #     if int(check_c_id) > 1024:
-                        #         break
-                        #     else:
-                        #         queue.append(n)
                 if is_jumpdest:
                     continue
                 else:
                     break
         print('queue = ', queue)
     print(nodes)
-        # print(edge_out, int(edge_weight))
-        # stack_sum_now = 0
-    #
-    #     for n in nodes[start_idx:]:
-    #         stack_sum = n[1].get('label')
-    #         check_stack_sum = n[1].get('id')
-    #         if n[0] == edge_out:
-    #             # print(n[0])
-    #             new_weight = int(check_stack_sum) + int(edge_weight)
-    #             print('new sum = ', new_weight)
-    #             print('sum = ', stack_sum)
-    #             if new_weight > int(stack_sum):
-    #                 n[1].update({'id': str(new_weight)})
-    #             break
-    # print(nodes)
 
 
 def init_graph(nodes, edges):
@@ -108,7 +80,7 @@ def init_graph(nodes, edges):
     edge_color = 'black'
     prev_instruction = '0'
 
-    with open('test', 'r') as f:
+    with open('test4', 'r') as f:
         for line in f:
             s = line.rstrip().split(' ')
             node_label = str(s[1])
@@ -116,7 +88,7 @@ def init_graph(nodes, edges):
                 nodes.append((str(s[0]),
                               {'label': 'JUMPDEST ' + s[0],
                                'id': '-1'}))
-    with open('test', 'r') as f:
+    with open('test4', 'r') as f:
         for idx, line in enumerate(f):
             s = line.rstrip().split(' ')
             node_header = str(s[0])
@@ -169,18 +141,23 @@ def init_graph(nodes, edges):
                     break
             for key_world in stack_pop_one:
                 if key_world in instruction:
-                    if instruction.rstrip() != 'SSTORE':
-                        if instruction.rstrip() != 'JUMPI':
-                            if instruction.rstrip() != 'JUMPDEST':
-                                edge_color = 'green'
-                                stack_size = '-1'
-                                stack_sum -= 1
-                                break
+                    if instruction.rstrip() != 'MSTORE':
+                        if instruction.rstrip() != 'SSTORE':
+                            if instruction.rstrip() != 'JUMPI':
+                                if instruction.rstrip() != 'JUMPDEST':
+                                    edge_color = 'green'
+                                    stack_size = '-1'
+                                    stack_sum -= 1
+                                    break
             for key_world in stack_unchange:
                 if key_world in instruction:
                     edge_color = 'brown'
                     stack_size = '+0'
                     break
+            if instruction == 'CALL':
+                edge_color = 'purple'
+                stack_size = '-6'
+                stack_sum -= 6
             one_before_header = stack_header
             stack_header = node_header
             nodes.append((stack_header,

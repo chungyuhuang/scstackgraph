@@ -1,188 +1,38 @@
-pragma solidity ^0.4.13;
-
-contract Fund {
-    uint a = 0;
-    Fund aa;
-    function send(address addr1) {
-        aa = Fund(addr1);
-        for(uint a = 0; a < 500; a++){
-            aa.set(a);
-        }
-    }
-    function set(uint i){
-        a = i;
-    }
-}
-
-
-[73] JUMPDEST
-[74] CALLVALUE 
-[75] ISZERO 
-[78] PUSH2 0x0054 
-[79] JUMPI 
-[81] PUSH1 0x00 
-[82] DUP1 
-[83] 'fd'(Unknown Opcode) 
-[84] JUMPDEST 
-[87] PUSH2 0x0080 
-[89] PUSH1 0x04 
-[90] DUP1 
-[91] DUP1 
-[92] CALLDATALOAD 
-[113] PUSH20 0xffffffffffffffffffffffffffffffffffffffff 
-[114] AND 
-[115] SWAP1 
-[117] PUSH1 0x20 
-[118] ADD 
-[119] SWAP1 
-[120] SWAP2 
-[121] SWAP1 
-[122] POP 
-[123] POP 
-[126] PUSH2 0x00a5 
-[127] JUMP 
-[128] JUMPDEST 
-[129] STOP 
-[130] JUMPDEST 
-[131] CALLVALUE 
-[132] ISZERO 
-[135] PUSH2 0x008d 
-[136] JUMPI 
-[138] PUSH1 0x00 
-[139] DUP1 
-[140] 'fd'(Unknown Opcode) 
-[141] JUMPDEST 
-[144] PUSH2 0x00a3 
-[146] PUSH1 0x04 
-[147] DUP1 
-[148] DUP1 
-[149] CALLDATALOAD 
-[150] SWAP1 
-[152] PUSH1 0x20 
-[153] ADD 
-[154] SWAP1 
-[155] SWAP2 
-[156] SWAP1 
-[157] POP 
-[158] POP 
-[161] PUSH2 0x01ad 
-[162] JUMP 
-[163] JUMPDEST 
-[164] STOP 
-[165] JUMPDEST 
-[167] PUSH1 0x00 
-[168] DUP2 
-[170] PUSH1 0x01 
-[172] PUSH1 0x00 
-[175] PUSH2 0x0100 
-[176] EXP 
-[177] DUP2 
-[178] SLOAD 
-[179] DUP2 
-[200] PUSH20 0xffffffffffffffffffffffffffffffffffffffff 
-[201] MUL 
-[202] NOT 
-[203] AND 
-[204] SWAP1 
-[205] DUP4 
-[226] PUSH20 0xffffffffffffffffffffffffffffffffffffffff 
-[227] AND 
-[228] MUL 
-[229] OR 
-[230] SWAP1 
-[231] SSTORE 
-[232] POP 
-[234] PUSH1 0x00 
-[235] SWAP1 
-[236] POP 
-[237] JUMPDEST 
-[239] PUSH1 0x05 
-[240] DUP2 
-[241] LT 
-[242] ISZERO 
-[245] PUSH2 0x01a8 
-[246] JUMPI 
-[248] PUSH1 0x01 
-[250] PUSH1 0x00 
-[251] SWAP1 
-[252] SLOAD 
-[253] SWAP1 
-[256] PUSH2 0x0100 
-[257] EXP 
-[258] SWAP1 
-[259] DIV 
-[280] PUSH20 0xffffffffffffffffffffffffffffffffffffffff 
-[281] AND 
-[302] PUSH20 0xffffffffffffffffffffffffffffffffffffffff 
-[303] AND 
-[308] PUSH4 0x60fe47b1 
-[309] DUP3 
-[311] PUSH1 0x40 
-[312] MLOAD 
-[313] DUP3 
-[318] PUSH4 0xffffffff 
-[319] AND 
-[349] PUSH29 0x0100000000000000000000000000000000000000000000000000000000 
-[350] MUL 
-[351] DUP2 
-[352] MSTORE 
-[354] PUSH1 0x04 
-[355] ADD 
-[356] DUP1 
-[357] DUP3 
-[358] DUP2 
-[359] MSTORE 
-[361] PUSH1 0x20 
-[362] ADD 
-[363] SWAP2 
-[364] POP 
-[365] POP 
-[367] PUSH1 0x00 
-[369] PUSH1 0x40 
-[370] MLOAD 
-[371] DUP1 
-[372] DUP4 
-[373] SUB 
-[374] DUP2 
-[376] PUSH1 0x00 
-[377] DUP8 
-[378] DUP1 
-[379] EXTCODESIZE 
-[380] ISZERO 
-[381] ISZERO 
-[384] PUSH2 0x0186 
-[385] JUMPI 
-[387] PUSH1 0x00 
-[388] DUP1 
-[389] 'fd'(Unknown Opcode) 
-[390] JUMPDEST 
-[393] PUSH2 0x02c6 
-[394] GAS 
-[395] SUB 
-[396] CALL 
-[397] ISZERO 
-[398] ISZERO 
-[401] PUSH2 0x0197 
-[402] JUMPI 
-[404] PUSH1 0x00 
-[405] DUP1 
-[406] 'fd'(Unknown Opcode) 
-[407] JUMPDEST 
-[408] POP 
-[409] POP 
-[410] POP 
-[411] JUMPDEST 
-[412] DUP1 
-[413] DUP1 
-[415] PUSH1 0x01 
-[416] ADD 
-[417] SWAP2 
-[418] POP 
-[419] POP 
-[422] PUSH2 0x00ed 
-[423] JUMP 
-[424] JUMPDEST 
-[425] JUMPDEST 
-[426] POP 
-[427] POP 
-[428] JUMP 
+[132] JUMPDEST
+[134] PUSH1 0x00
+[135] DUP1
+[136] SWAP1
+[137] POP
+[138] JUMPDEST
+[140] PUSH1 0x0a
+[141] DUP2
+[142] LT
+[143] ISZERO
+[145] PUSH1 0xb0
+[146] JUMPI
+[148] PUSH1 0x00
+[149] DUP1
+[150] DUP2
+[151] SLOAD
+[152] DUP1
+[153] SWAP3
+[154] SWAP2
+[155] SWAP1
+[157] PUSH1 0x01
+[158] ADD
+[159] SWAP2
+[160] SWAP1
+[161] POP
+[162] SSTORE
+[163] POP
+[164] JUMPDEST
+[165] DUP1
+[166] DUP1
+[168] PUSH1 0x01
+[169] ADD
+[170] SWAP2
+[171] POP
+[172] POP
+[174] PUSH1 0x8a
+[175] JUMP
+[176] JUMPDEST
