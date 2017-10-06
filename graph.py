@@ -1,3 +1,4 @@
+import sys
 import graphviz as gv
 import functools
 from collections import deque
@@ -7,12 +8,11 @@ def main():
     nodes = []
     edges = []
     init_graph(nodes, edges)
-    print(nodes)
-    print(edges)
     count_stack_size(nodes, edges)
 
 
 def count_stack_size(nodes, edges):
+    count = 0
     queue = deque([])
     start_idx = 0
 
@@ -24,9 +24,15 @@ def count_stack_size(nodes, edges):
     start_node = nodes[start_idx]
     start_node[1]['id'] = 0
     queue.append(start_node)
+    print("----- Start checking contract -----")
+    print("Checking ", end='')
     while len(queue):
+        if count % 10000 == 0:
+            print('.', end='')
+            sys.stdout.flush()
+        count += 1
         father_node = queue.popleft()
-        print('\nfather node = ', father_node)
+        # print('\nfather node = ', father_node)
         f_label = father_node[0]
         f_id = father_node[1].get('id')
         for e in edges:
@@ -36,59 +42,61 @@ def count_stack_size(nodes, edges):
             edge_to = edge_relation[1]
             edge_weight = e[1].get('id')
             if edge_from == f_label:
-                print('edge = ', e)
+                # print('edge = ', e)
                 for n in nodes:
                     if n[0] == edge_to:
                         n_label_name = n[1].get('label').split(' ')
-                        print('child node = ', n)
+                        # print('child node = ', n)
                         c_id = n[1].get('id')
-                        print(f_id, edge_weight, c_id)
+                        # print(f_id, edge_weight, c_id)
                         if int(f_id) + int(edge_weight) > int(c_id):
                             child_node = n[1]
                             child_node['id'] = int(f_id) + int(edge_weight)
                             check_c_id = child_node.get('id')
-                            print(check_c_id)
+                            # print(check_c_id)
                             if int(check_c_id) > 1024:
-                                break
+                                print("\n----- Stack size overflow: [Yes] -----")
+                                sys.exit(0)
                             else:
                                 queue.append(n)
                         if n_label_name[0] == 'JUMPDEST':
                             is_jumpdest = 1
                             continue
                         else:
-                            is_jumpdest = 0
                             break
                 if is_jumpdest:
                     continue
                 else:
                     break
-        print('queue = ', queue)
-    print(nodes)
+        # print('queue = ', queue)
+    # print(nodes)
+    print("\n----- Stack size overflow: [No] -----")
 
 
 def init_graph(nodes, edges):
-    stack_push_one = ['PUSH', 'DUP', 'MLOAD', 'CALLER', 'CALLVALUE', 'GAS']
+    stack_push_one = ['PUSH', 'DUP', 'CALLER', 'CALLVALUE', 'GAS']
     stack_pop_one = ['POP', 'LT', 'GT', 'EQ', 'AND', 'OR', 'XOR', 'ADD', 'SUB', 'MUL', 'DIV', 'EXP']
     stack_pop_two = ['MSTORE', 'SSTORE']
-    stack_unchange = ['SWAP', 'JUMPDEST', 'SLOAD', 'NOT', 'ISZERO', 'CALLDATALOAD', 'EXTCODESIZE', 'STOP']
+    stack_unchange = ['SWAP', 'JUMPDEST', 'MLOAD', 'SLOAD', 'NOT', 'ISZERO', 'CALLDATALOAD', 'EXTCODESIZE', 'STOP']
 
     push_value_list = []
 
-    stack_header = '0'
+    stack_header = 'JUMPDEST'
     stack_size = '0'
     stack_sum = 0
     edge_color = 'black'
     prev_instruction = '0'
 
-    with open('test4', 'r') as f:
+    with open('test2', 'r') as f:
         for line in f:
             s = line.rstrip().split(' ')
+            node_header = str(s[0])
             node_label = str(s[1])
             if node_label == 'JUMPDEST':
-                nodes.append((str(s[0]),
-                              {'label': 'JUMPDEST ' + s[0],
+                nodes.append((node_header,
+                              {'label': 'JUMPDEST ' + node_header,
                                'id': '-1'}))
-    with open('test4', 'r') as f:
+    with open('test2', 'r') as f:
         for idx, line in enumerate(f):
             s = line.rstrip().split(' ')
             node_header = str(s[0])
@@ -100,9 +108,8 @@ def init_graph(nodes, edges):
                     num = int(s[2], 16)
                     push_value_list.append(num)
             if prev_instruction == 'JUMP' and instruction == 'JUMPDEST':
-                stack_header = node_header
-                continue
-            if instruction in ['JUMP', 'JUMPI']:
+                stack_header = 'JUMPDEST'
+            if instruction in ['JUMP', 'JUMPI'] and prev_instruction != 'POP':
                 if instruction == 'JUMP':
                     stack_size = '-1'
                     stack_sum -= 1
@@ -112,7 +119,7 @@ def init_graph(nodes, edges):
                 one_before_header = stack_header
                 stack_header = node_header
                 nodes.append((stack_header,
-                              {'label': str(stack_sum),
+                              {'label': '',
                                'id': '-1'}))
                 jump_from = stack_header
                 jump_to = '[' + str(push_value_list[-1]) + ']'
@@ -122,7 +129,7 @@ def init_graph(nodes, edges):
                                'color': edge_color,
                                'id': str(stack_size)}))
                 edges.append(((jump_from, jump_to),
-                              {'label': '0',
+                              {'label': '',
                                'color': edge_color,
                                'id': '0'}))
                 prev_instruction = instruction
@@ -160,15 +167,28 @@ def init_graph(nodes, edges):
                 stack_sum -= 6
             one_before_header = stack_header
             stack_header = node_header
-            nodes.append((stack_header,
-                          {'label': str(stack_sum),
-                           'id': '-1'}))
+            if instruction.rstrip() == 'JUMPDEST':
+                nodes.append((stack_header,
+                              {'label': '',  # str(stack_sum),
+                               'id': '-1',
+                               'fontname': 'Helvetica',
+                               'shape': 'hexagon',
+                               'fontcolor': 'gray',
+                               'color': 'white',
+                               'style': 'filled',
+                               'fillcolor': '#006699',
+                               }))
+            else:
+                nodes.append((stack_header,
+                              {'label': '',  # str(stack_sum),
+                               'id': '-1'}))
             edges.append(((one_before_header, stack_header),
                           {'label': s[0] + ' ' + instruction + ' ' + stack_size,
                            'color': edge_color,
                            'id': str(stack_size)}))
             prev_instruction = instruction
-    # print(push_value_list)
+    # print(nodes)
+    # print(edges)
     create_graph(nodes, edges)
 
 
