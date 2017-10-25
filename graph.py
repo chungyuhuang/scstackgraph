@@ -4,6 +4,7 @@ import functools
 from collections import deque
 import argparse
 import re
+import psycopg2
 
 
 def main():
@@ -14,23 +15,38 @@ def main():
 
     if args.f:
         # read from DB
-        filename = load_from_db()
-        # code_preproc(filename)
-    else:
+        filename = "sourcecode"
+        cur = load_from_db()
+        for i in cur:
+            row_id = i[0]
+            assembly_code = i[1]
+            w = open(filename, 'w')
+            w.write(assembly_code)
+            w.close()
+            code_preproc(filename)
+            result, end_node = analysis_code()
+            if result:
+                print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+            else:
+                print('\n ---> Positive Cycle Found: [No]')
+            update_result_to_db(result, row_id)
+    elif args.i:
         filename = args.i
         code_preproc(filename)
-
-    print('----- Start checking contract \"{}\" -----'.format(filename))
-    nodes = []
-    edges = []
-    init_graph(nodes, edges)
-    # print(nodes)
-    # print(edges)
-    count_stack_size(nodes, edges)
+        result, end_node = analysis_code()
+        if result:
+            print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+        else:
+            print('\n ---> Positive Cycle Found: [No]')
+    else:
+        print('Must use an argument, -i for individual source code, -f use source code from DB')
+        sys.exit(0)
 
 
 def code_preproc(filename):
+    print('----- Start checking contract \"{}\" -----'.format(filename))
     w = open('opcode', 'w')
+
     with open(filename, 'r') as f:
         is_data = 0
         for idx, line in enumerate(f):
@@ -50,12 +66,57 @@ def code_preproc(filename):
     w.close()
 
 
+def connect_to_db():
+    try:
+        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="localhost", port="65432")
+        return conn
+    except Exception as ex:
+        print("--- Unable to connect to the database. ---")
+        print('Error: ', ex)
+        sys.exit(0)
+
+
 def load_from_db():
-    return 0
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute('''SELECT id, sourcecode FROM contract WHERE sourcecode <> '' AND status = 'PENDING';''')
+    except Exception as ex:
+        print('--- Failed to select source code from database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+    return cur
+
+
+def update_result_to_db(result, row_id=None):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            '''UPDATE contract SET analysisresult = '{}' AND status = '{}'
+            WHERE id='{}' '''.format(result, 'CFG_CONSTRUCTED', row_id))
+    except Exception as ex:
+        print('--- Failed to select source code from database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+
+def analysis_code():
+    nodes = []
+    edges = []
+    init_graph(nodes, edges)
+    # print(nodes)
+    # print(edges)
+    return count_stack_size(nodes, edges)
 
 
 def count_stack_size(nodes, edges):
     count = 0
+    check_result = 0
+    end_node = ''
     queue = deque([])
     node_list = []
     edge_list = []
@@ -117,8 +178,10 @@ def count_stack_size(nodes, edges):
                             check_c_id = child_node_info.get('id')
                             print(check_c_id)
                             if int(check_c_id) > 1023:
-                                print('\n ---> Positive Cycle Found: [Yes] node {}'.format(n))
-                                sys.exit(0)
+                                check_result = 1
+                                end_node = n
+                                break
+                                # sys.exit(0)
                             else:
                                 queue.append(n)
                         if n_label_name[0] == 'JUMPDEST':
@@ -131,7 +194,7 @@ def count_stack_size(nodes, edges):
                 else:
                     break
         print('queue = ', queue)
-    print('\n ---> Positive Cycle Found: [No]')
+    return check_result, end_node
 
 
 def find_graph_head(node_list, edge_list):
