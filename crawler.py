@@ -22,7 +22,7 @@ def main():
         pyperclip.copy(code)
         copy_assembly_code()
         time.sleep(30)
-        update_assembly_to_db(conn, row_id)
+        update_assembly_to_db(conn, row_id, code)
 
     conn.close()
     web.close()
@@ -30,7 +30,7 @@ def main():
 
 def connect_to_db():
     try:
-        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="localhost", port="65432")
+        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="140.119.19.77", port="65432")
         return conn
     except Exception as ex:
         print("--- Unable to connect to the database. ---")
@@ -51,17 +51,20 @@ def load_source_code_from_db():
         print('Error: ', ex)
 
     try:
-        cur.execute('''SELECT id, sourcecode FROM contract WHERE id < 3 AND status <> 'GOT_ASSEMBLY';''')
+        cur.execute('''SELECT id, sourcecode FROM contract
+        WHERE status = 'PENDING' AND sourcecode <> '' ORDER BY id;''')
     except Exception as ex:
         print('--- Failed to select source code from database. ---')
         print('Error: ', ex)
+        conn.close()
         sys.exit(0)
 
     return conn, cur
 
 
-def update_assembly_to_db(conn, row_id):
-    assembly_code = pyperclip.paste()
+def update_assembly_to_db(conn, row_id, source_code):
+    assembly_code_origin = pyperclip.paste()
+    assembly_code = assembly_code_origin.replace("'", " ")
 
     # open('sourcecode', 'w').close()
     # w = open('sourcecode', 'w')
@@ -69,15 +72,24 @@ def update_assembly_to_db(conn, row_id):
     # w.close()
 
     cur = conn.cursor()
-    try:
-        cur.execute('''UPDATE contract SET assembly='{}', status='{}'
-        WHERE id='{}';'''.format(assembly_code, 'GOT_ASSEMBLY', row_id))
-        conn.commit()
-    except Exception as ex:
-        cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('GET_ASSEMBLY_FAILED', row_id))
-        conn.commit()
-        print('--- Failed to update assembly code to database. ---')
-        print('Error: ', ex)
+
+    if assembly_code_origin == source_code:
+        try:
+            cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('COMPILE_ERROR',
+                                                                                    row_id))
+            conn.commit()
+        except Exception as ex:
+            print('--- Failed to update assembly code to database. ---')
+            print('Error: ', ex)
+    else:
+        try:
+            cur.execute('''UPDATE contract SET assembly='{}', status='{}' WHERE id='{}';'''.format(assembly_code,
+                                                                                                   'GOT_ASSEMBLY',
+                                                                                                   row_id))
+            conn.commit()
+        except Exception as ex:
+            print('--- Failed to update assembly code to database. ---')
+            print('Error: ', ex)
 
 
 def copy_assembly_code():
