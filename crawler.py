@@ -1,31 +1,52 @@
 from selenium import webdriver
 import pyperclip
 import subprocess
+from subprocess import check_output
 import time
 import psycopg2
 import sys
+import argparse
 
 
 def main():
-    chrome_path = "/Users/soslab/Downloads/chromedriver"
-    # chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-asm", "--asm", help="generate assembly code", action='store_true')
+    parser.add_argument("-r", "--r", help="generate runtime binary", action='store_true')
+    args = parser.parse_args()
+
+    # chrome_path = "/Users/soslab/Downloads/chromedriver"
+    chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
     # chromedriver.exe執行檔所存在的路徑
 
-    web = webdriver.Chrome(chrome_path)
-    web.get('https://ethereum.github.io/browser-solidity/#version=soljson-v0.4.18+commit.9cf6e910.js')
+    if args.asm:
+        web = webdriver.Chrome(chrome_path)
+        web.get('https://ethereum.github.io/browser-solidity/#version=soljson-v0.4.18+commit.9cf6e910.js')
 
     conn, cur = load_source_code_from_db()
 
     for i in cur:
         row_id = i[0]
         code = i[1]
-        pyperclip.copy(code)
-        copy_assembly_code()
-        time.sleep(30)
-        update_assembly_to_db(conn, row_id, code)
+
+        if args.r:
+            w = open('contract.sol', 'w')
+            w.write(code)
+            w.close()
+            result = gen_runtime_binary('contract.sol')
+            if result is not None:
+                result = str(result).split('Binary of the runtime part: \\n')[1].split('\\n')[0]
+                update_to_db(args, conn, row_id, result)
+        elif args.asm:
+            pyperclip.copy(code)
+            copy_assembly_code()
+            time.sleep(30)
+            update_to_db(args, conn, row_id, code)
+        else:
+            print('Must use an argument, -asm for assembly, -r for runtime binary.')
+            sys.exit(0)
 
     conn.close()
-    web.close()
+    # web.close()
 
 
 def connect_to_db():
@@ -46,11 +67,6 @@ def load_source_code_from_db():
         cur.execute('SELECT COUNT(*) FROM contract;')
         num = cur.fetchall()[0][0]
         print('--- Number(s) of downloaded contract from Etherscan: {} ---'.format(num))
-    except Exception as ex:
-        print('--- Failed to select contract from database. ---')
-        print('Error: ', ex)
-
-    try:
         cur.execute('''SELECT id, sourcecode FROM contract
         WHERE status = 'PENDING' AND sourcecode <> '' ORDER BY id;''')
     except Exception as ex:
@@ -62,9 +78,9 @@ def load_source_code_from_db():
     return conn, cur
 
 
-def update_assembly_to_db(conn, row_id, source_code):
-    assembly_code_origin = pyperclip.paste()
-    assembly_code = assembly_code_origin.replace("'", " ")
+def update_to_db(args, conn, row_id, input_code):
+    code_origin = pyperclip.paste()
+    assembly_code = code_origin.replace("'", " ")
 
     # open('sourcecode', 'w').close()
     # w = open('sourcecode', 'w')
@@ -73,23 +89,50 @@ def update_assembly_to_db(conn, row_id, source_code):
 
     cur = conn.cursor()
 
-    if assembly_code_origin == source_code:
+    if args.r:
         try:
-            cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('COMPILE_ERROR',
-                                                                                    row_id))
+            cur.execute('''
+                UPDATE contract
+                SET runtime_opcode='{}', status='{}'
+                WHERE id='{}';
+                '''.format(input_code,
+                           'GOT_RUNTIME_BINARY',
+                           row_id))
             conn.commit()
         except Exception as ex:
-            print('--- Failed to update assembly code to database. ---')
+            print('--- Failed to update runtime binary to database. ---')
             print('Error: ', ex)
     else:
-        try:
-            cur.execute('''UPDATE contract SET assembly='{}', status='{}' WHERE id='{}';'''.format(assembly_code,
-                                                                                                   'GOT_ASSEMBLY',
-                                                                                                   row_id))
-            conn.commit()
-        except Exception as ex:
-            print('--- Failed to update assembly code to database. ---')
-            print('Error: ', ex)
+        if code_origin == input_code:
+            try:
+                cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('COMPILE_ERROR',
+                                                                                        row_id))
+                conn.commit()
+            except Exception as ex:
+                print('--- Failed to update to database. ---')
+                print('Error: ', ex)
+        else:
+            try:
+                cur.execute('''
+                UPDATE contract
+                SET assembly='{}', status='{}'
+                WHERE id='{}';
+                '''.format(assembly_code,
+                           'GOT_ASSEMBLY',
+                           row_id))
+                conn.commit()
+            except Exception as ex:
+                print('--- Failed to update assembly code to database. ---')
+                print('Error: ', ex)
+
+
+def gen_runtime_binary(file):
+    try:
+        output = check_output(['solc', '--bin-runtime', file])
+        return output
+    except Exception as ex:
+        print('--- Failed to execute solc. ---')
+        print('Error: ', ex)
 
 
 def copy_assembly_code():

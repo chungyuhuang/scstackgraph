@@ -8,9 +8,9 @@ click("1508420687346.png")
 if exists("1508420854131.png"):
     click("1508948017257.png")
     type(Key.DOWN, KeyModifier.CMD)
-    e1 = exists(Pattern("1508421204819.png").targetOffset(46,0))
+    e1 = exists("1509354940989.png")
     if e1:
-        t = find(Pattern("1508421204819.png").targetOffset(46,0))
+        t = find(Pattern("1509354953413.png").targetOffset(35,-1))
         click(t)
         click("1508421776272.png")
     else:

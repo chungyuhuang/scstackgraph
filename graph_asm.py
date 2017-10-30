@@ -19,7 +19,9 @@ def main():
         cur = load_from_db()
         for i in cur:
             row_id = i[0]
-            assembly_code = i[1]
+            contract_addr = i[1]
+            print('\n ---> Analyzing contract: {}'.format(contract_addr))
+            assembly_code = i[2]
             w = open(filename, 'w')
             w.write(assembly_code)
             w.close()
@@ -44,7 +46,7 @@ def main():
 
 
 def code_preproc(filename):
-    print('----- Start checking contract \"{}\" -----'.format(filename))
+    print(' --- Start checking contract \"{}\" ---'.format(filename))
     w = open('opcode', 'w')
 
     with open(filename, 'r') as f:
@@ -68,10 +70,10 @@ def code_preproc(filename):
 
 def connect_to_db():
     try:
-        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="localhost", port="65432")
+        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="140.119.19.77", port="65432")
         return conn
     except Exception as ex:
-        print("--- Unable to connect to the database. ---")
+        print(" --- Unable to connect to the database. ---")
         print('Error: ', ex)
         sys.exit(0)
 
@@ -81,25 +83,47 @@ def load_from_db():
     cur = conn.cursor()
 
     try:
-        cur.execute('''SELECT id, sourcecode FROM contract WHERE sourcecode <> '' AND status = 'PENDING';''')
+        print(' --- Querying contract assembly code from DB ---')
+        cur.execute('''
+        SELECT COUNT(*)
+        FROM contract
+        WHERE assembly <> '' AND status = 'GOT_ASSEMBLY';''')
+        num = cur.fetchall()[0][0]
+        print(' ---> {} contract(s) waiting for analysis ---'.format(num))
+        cur.execute('''
+        SELECT id, address, assembly
+        FROM contract
+        WHERE assembly <> '' AND status = 'GOT_ASSEMBLY'
+        ORDER BY id;
+        ''')
     except Exception as ex:
-        print('--- Failed to select source code from database. ---')
+        print(' --- Failed to select source code from database. ---')
         print('Error: ', ex)
         sys.exit(0)
 
     return cur
 
 
-def update_result_to_db(result, row_id=None):
+def update_result_to_db(result, row_id):
     conn = connect_to_db()
     cur = conn.cursor()
 
     try:
-        cur.execute(
-            '''UPDATE contract SET analysisresult = '{}' AND status = '{}'
-            WHERE id='{}' '''.format(result, 'CFG_CONSTRUCTED', row_id))
+        print(' --- Updating contract analysis result to DB, id: {} ---'.format(row_id))
+        cur.execute('''
+        UPDATE contract
+        SET status = '{}'
+        WHERE id='{}';
+        '''.format('CFG_CONSTRUCTED', row_id))
+        conn.commit()
+        cur.execute('''
+        UPDATE contract
+        SET analysis_result = '{}'
+        WHERE id='{}';
+        '''.format(result, row_id))
+        conn.commit()
     except Exception as ex:
-        print('--- Failed to select source code from database. ---')
+        print(' --- Failed to update result to database. ---')
         print('Error: ', ex)
         sys.exit(0)
 
@@ -152,7 +176,7 @@ def count_stack_size(nodes, edges):
 
         count += 1
         father_node = queue.popleft()
-        print('\nfather node = ', father_node)
+        # print('\nfather node = ', father_node)
         f_idx = father_node[0]
         f_id = father_node[1].get('id')
 
@@ -164,19 +188,19 @@ def count_stack_size(nodes, edges):
             edge_weight = e[1].get('id')
 
             if edge_from == f_idx:
-                print('edge = ', e)
+                # print('edge = ', e)
                 for n in nodes:
                     child_idx = n[0]
                     if edge_to == child_idx:
                         n_label_name = n[1].get('label').split(' ')
-                        print('child node = ', n)
+                        # print('child node = ', n)
                         c_id = n[1].get('id')
-                        print(f_id, edge_weight, c_id)
+                        # print(f_id, edge_weight, c_id)
                         if int(f_id) + int(edge_weight) > int(c_id):
                             child_node_info = n[1]
                             child_node_info['id'] = str(int(f_id) + int(edge_weight))
                             check_c_id = child_node_info.get('id')
-                            print(check_c_id)
+                            # print(check_c_id)
                             if int(check_c_id) > 1023:
                                 check_result = 1
                                 end_node = n
@@ -193,7 +217,7 @@ def count_stack_size(nodes, edges):
                     continue
                 else:
                     break
-        print('queue = ', queue)
+        # print('queue = ', queue)
     return check_result, end_node
 
 
