@@ -1,386 +1,606 @@
-//sol Wallet
-// Multi-sig, daily-limited account proxy/wallet.
-// @authors:
-// Gav Wood <g@ethdev.com>
-// inheritable "property" contract that enables methods to be protected by requiring the acquiescence of either a
-// single, or, crucially, each of a number of, designated owners.
-// usage:
-// use modifiers onlyowner (just own owned) or onlymanyowners(hash), whereby the same hash must be provided by
-// some number (specified in constructor) of the set of owners (specified in the constructor, modifiable) before the
-// interior is executed.
-contract multiowned {
+pragma solidity ^0.4.0;
 
-    // TYPES
 
-    // struct for the status of a pending operation.
-    struct PendingState {
-        uint yetNeeded;
-        uint ownersDone;
-        uint index;
+/*
+
+Temporary Hash Registrar
+========================
+
+This is a simplified version of a hash registrar. It is purporsefully limited:
+names cannot be six letters or shorter, new auctions will stop after 4 years.
+
+The plan is to test the basic features and then move to a new contract in at most
+2 years, when some sort of renewal mechanism will be enabled.
+*/
+
+contract AbstractENS {
+    function owner(bytes32 node) constant returns(address);
+    function resolver(bytes32 node) constant returns(address);
+    function ttl(bytes32 node) constant returns(uint64);
+    function setOwner(bytes32 node, address owner);
+    function setSubnodeOwner(bytes32 node, bytes32 label, address owner);
+    function setResolver(bytes32 node, address resolver);
+    function setTTL(bytes32 node, uint64 ttl);
+
+    // Logged when the owner of a node assigns a new owner to a subnode.
+    event NewOwner(bytes32 indexed node, bytes32 indexed label, address owner);
+
+    // Logged when the owner of a node transfers ownership to a new account.
+    event Transfer(bytes32 indexed node, address owner);
+
+    // Logged when the resolver for a node changes.
+    event NewResolver(bytes32 indexed node, address resolver);
+
+    // Logged when the TTL of a node changes
+    event NewTTL(bytes32 indexed node, uint64 ttl);
+}
+
+/**
+ * @title Deed to hold ether in exchange for ownership of a node
+ * @dev The deed can be controlled only by the registrar and can only send ether back to the owner.
+ */
+contract Deed {
+    address public registrar;
+    address constant burn = 0xdead;
+    uint public creationDate;
+    address public owner;
+    address public previousOwner;
+    uint public value;
+    event OwnerChanged(address newOwner);
+    event DeedClosed();
+    bool active;
+
+
+    modifier onlyRegistrar {
+        if (msg.sender != registrar) throw;
+        _;
     }
 
-    // EVENTS
-
-    // this contract only has five types of events: it can accept a confirmation, in which case
-    // we record owner and operation (hash) alongside it.
-    event Confirmation(address owner, bytes32 operation);
-    event Revoke(address owner, bytes32 operation);
-    // some others are in the case of an owner changing.
-    event OwnerChanged(address oldOwner, address newOwner);
-    event OwnerAdded(address newOwner);
-    event OwnerRemoved(address oldOwner);
-    // the last one is emitted if the required signatures change
-    event RequirementChanged(uint newRequirement);
-
-    // MODIFIERS
-
-    // simple single-sig function modifier.
-    modifier onlyowner {
-        if (isOwner(msg.sender))
-            _
-    }
-    // multi-sig function modifier: the operation must have an intrinsic hash in order
-    // that later attempts can be realised as the same underlying operation and
-    // thus count as confirmations.
-    modifier onlymanyowners(bytes32 _operation) {
-        if (confirmAndCheck(_operation))
-            _
+    modifier onlyActive {
+        if (!active) throw;
+        _;
     }
 
-    // METHODS
-
-    // constructor is given number of sigs required to do protected "onlymanyowners" transactions
-    // as well as the selection of addresses capable of confirming them.
-    function multiowned(address[] _owners, uint _required) {
-        m_numOwners = _owners.length + 1;
-        m_owners[1] = uint(msg.sender);
-        m_ownerIndex[uint(msg.sender)] = 1;
-        for (uint i = 0; i < _owners.length; ++i)
-        {
-            m_owners[2 + i] = uint(_owners[i]);
-            m_ownerIndex[uint(_owners[i])] = 2 + i;
-        }
-        m_required = _required;
-    }
-    
-    // Revokes a prior confirmation of the given operation
-    function revoke(bytes32 _operation) external {
-        uint ownerIndex = m_ownerIndex[uint(msg.sender)];
-        // make sure they're an owner
-        if (ownerIndex == 0) return;
-        uint ownerIndexBit = 2**ownerIndex;
-        var pending = m_pending[_operation];
-        if (pending.ownersDone & ownerIndexBit > 0) {
-            pending.yetNeeded++;
-            pending.ownersDone -= ownerIndexBit;
-            Revoke(msg.sender, _operation);
-        }
-    }
-    
-    // Replaces an owner `_from` with another `_to`.
-    function changeOwner(address _from, address _to) onlymanyowners(sha3(msg.data, block.number)) external {
-        if (isOwner(_to)) return;
-        uint ownerIndex = m_ownerIndex[uint(_from)];
-        if (ownerIndex == 0) return;
-
-        clearPending();
-        m_owners[ownerIndex] = uint(_to);
-        m_ownerIndex[uint(_from)] = 0;
-        m_ownerIndex[uint(_to)] = ownerIndex;
-        OwnerChanged(_from, _to);
-    }
-    
-    function addOwner(address _owner) onlymanyowners(sha3(msg.data, block.number)) external {
-        if (isOwner(_owner)) return;
-
-        clearPending();
-        if (m_numOwners >= c_maxOwners)
-            reorganizeOwners();
-        if (m_numOwners >= c_maxOwners)
-            return;
-        m_numOwners++;
-        m_owners[m_numOwners] = uint(_owner);
-        m_ownerIndex[uint(_owner)] = m_numOwners;
-        OwnerAdded(_owner);
-    }
-    
-    function removeOwner(address _owner) onlymanyowners(sha3(msg.data, block.number)) external {
-        uint ownerIndex = m_ownerIndex[uint(_owner)];
-        if (ownerIndex == 0) return;
-        if (m_required > m_numOwners - 1) return;
-
-        m_owners[ownerIndex] = 0;
-        m_ownerIndex[uint(_owner)] = 0;
-        clearPending();
-        reorganizeOwners(); //make sure m_numOwner is equal to the number of owners and always points to the optimal free slot
-        OwnerRemoved(_owner);
-    }
-    
-    function changeRequirement(uint _newRequired) onlymanyowners(sha3(msg.data, block.number)) external {
-        if (_newRequired > m_numOwners) return;
-        m_required = _newRequired;
-        clearPending();
-        RequirementChanged(_newRequired);
-    }
-    
-    function isOwner(address _addr) returns (bool) {
-        return m_ownerIndex[uint(_addr)] > 0;
-    }
-    
-    function hasConfirmed(bytes32 _operation, address _owner) constant returns (bool) {
-        var pending = m_pending[_operation];
-        uint ownerIndex = m_ownerIndex[uint(_owner)];
-
-        // make sure they're an owner
-        if (ownerIndex == 0) return false;
-
-        // determine the bit to set for this owner.
-        uint ownerIndexBit = 2**ownerIndex;
-        if (pending.ownersDone & ownerIndexBit == 0) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-    
-    // INTERNAL METHODS
-
-    function confirmAndCheck(bytes32 _operation) internal returns (bool) {
-        // determine what index the present sender is:
-        uint ownerIndex = m_ownerIndex[uint(msg.sender)];
-        // make sure they're an owner
-        if (ownerIndex == 0) return;
-
-        var pending = m_pending[_operation];
-        // if we're not yet working on this operation, switch over and reset the confirmation status.
-        if (pending.yetNeeded == 0) {
-            // reset count of confirmations needed.
-            pending.yetNeeded = m_required;
-            // reset which owners have confirmed (none) - set our bitmap to 0.
-            pending.ownersDone = 0;
-            pending.index = m_pendingIndex.length++;
-            m_pendingIndex[pending.index] = _operation;
-        }
-        // determine the bit to set for this owner.
-        uint ownerIndexBit = 2**ownerIndex;
-        // make sure we (the message sender) haven't confirmed this operation previously.
-        if (pending.ownersDone & ownerIndexBit == 0) {
-            Confirmation(msg.sender, _operation);
-            // ok - check if count is enough to go ahead.
-            if (pending.yetNeeded <= 1) {
-                // enough confirmations: reset and run interior.
-                delete m_pendingIndex[m_pending[_operation].index];
-                delete m_pending[_operation];
-                return true;
-            }
-            else
-            {
-                // not enough: record that this owner in particular confirmed.
-                pending.yetNeeded--;
-                pending.ownersDone |= ownerIndexBit;
-            }
-        }
+    function Deed(address _owner) payable {
+        owner = _owner;
+        registrar = msg.sender;
+        creationDate = now;
+        active = true;
+        value = msg.value;
     }
 
-    function reorganizeOwners() private returns (bool) {
-        uint free = 1;
-        while (free < m_numOwners)
-        {
-            while (free < m_numOwners && m_owners[free] != 0) free++;
-            while (m_numOwners > 1 && m_owners[m_numOwners] == 0) m_numOwners--;
-            if (free < m_numOwners && m_owners[m_numOwners] != 0 && m_owners[free] == 0)
-            {
-                m_owners[free] = m_owners[m_numOwners];
-                m_ownerIndex[m_owners[free]] = free;
-                m_owners[m_numOwners] = 0;
-            }
-        }
+    function setOwner(address newOwner) onlyRegistrar {
+        if (newOwner == 0) throw;
+        previousOwner = owner;  // This allows contracts to check who sent them the ownership
+        owner = newOwner;
+        OwnerChanged(newOwner);
     }
-    
-    function clearPending() internal {
-        uint length = m_pendingIndex.length;
-        for (uint i = 0; i < length; ++i)
-            if (m_pendingIndex[i] != 0)
-                delete m_pending[m_pendingIndex[i]];
-        delete m_pendingIndex;
+
+    function setRegistrar(address newRegistrar) onlyRegistrar {
+        registrar = newRegistrar;
     }
+
+    function setBalance(uint newValue, bool throwOnFailure) onlyRegistrar onlyActive {
+        // Check if it has enough balance to set the value
+        if (value < newValue) throw;
+        value = newValue;
+        // Send the difference to the owner
+        if (!owner.send(this.balance - newValue) && throwOnFailure) throw;
+    }
+
+    /**
+     * @dev Close a deed and refund a specified fraction of the bid value
+     * @param refundRatio The amount*1/1000 to refund
+     */
+    function closeDeed(uint refundRatio) onlyRegistrar onlyActive {
+        active = false;
+        if (! burn.send(((1000 - refundRatio) * this.balance)/1000)) throw;
+        DeedClosed();
+        destroyDeed();
+    }
+
+    /**
+     * @dev Close a deed and refund a specified fraction of the bid value
+     */
+    function destroyDeed() {
+        if (active) throw;
         
-    // FIELDS
-
-    // the number of owners that must confirm the same operation before it is run.
-    uint public m_required;
-    // pointer used to find a free slot in m_owners
-    uint public m_numOwners;
-    
-    // list of owners
-    uint[256] m_owners;
-    uint constant c_maxOwners = 250;
-    // index on the list of owners to allow reverse lookup
-    mapping(uint => uint) m_ownerIndex;
-    // the ongoing operations.
-    mapping(bytes32 => PendingState) m_pending;
-    bytes32[] m_pendingIndex;
-}
-
-// inheritable "property" contract that enables methods to be protected by placing a linear limit (specifiable)
-// on a particular resource per calendar day. is multiowned to allow the limit to be altered. resource that method
-// uses is specified in the modifier.
-contract daylimit is multiowned {
-
-    // MODIFIERS
-
-    // simple modifier for daily limit.
-    modifier limitedDaily(uint _value) {
-        if (underLimit(_value))
-            _
-    }
-
-    // METHODS
-
-    // constructor - stores initial daily limit and records the present day's index.
-    function daylimit(uint _limit) {
-        m_dailyLimit = _limit;
-        m_lastDay = today();
-    }
-    // (re)sets the daily limit. needs many of the owners to confirm. doesn't alter the amount already spent today.
-    function setDailyLimit(uint _newLimit) onlymanyowners(sha3(msg.data, block.number)) external {
-        m_dailyLimit = _newLimit;
-    }
-    // (re)sets the daily limit. needs many of the owners to confirm. doesn't alter the amount already spent today.
-    function resetSpentToday() onlymanyowners(sha3(msg.data, block.number)) external {
-        m_spentToday = 0;
-    }
-    
-    // INTERNAL METHODS
-    
-    // checks to see if there is at least `_value` left from the daily limit today. if there is, subtracts it and
-    // returns true. otherwise just returns false.
-    function underLimit(uint _value) internal onlyowner returns (bool) {
-        // reset the spend limit if we're on a different day to last time.
-        if (today() > m_lastDay) {
-            m_spentToday = 0;
-            m_lastDay = today();
+        // Instead of selfdestruct(owner), invoke owner fallback function to allow
+        // owner to log an event if desired; but owner should also be aware that
+        // its fallback function can also be invoked by setBalance
+        if(owner.send(this.balance)) {
+            selfdestruct(burn);
         }
-        // check to see if there's enough left - if so, subtract and return true.
-        if (m_spentToday + _value >= m_spentToday && m_spentToday + _value <= m_dailyLimit) {
-            m_spentToday += _value;
-            return true;
-        }
-        return false;
     }
-    // determines today's index.
-    function today() private constant returns (uint) { return now / 1 days; }
-
-    // FIELDS
-
-    uint public m_dailyLimit;
-    uint public m_spentToday;
-    uint public m_lastDay;
 }
 
-// interface contract for multisig proxy contracts; see below for docs.
-contract multisig {
+/**
+ * @title Registrar
+ * @dev The registrar handles the auction process for each subnode of the node it owns.
+ */
+contract Registrar {
+    AbstractENS public ens;
+    bytes32 public rootNode;
 
-    // EVENTS
-
-    // logged events:
-    // Funds has arrived into the wallet (record how much).
-    event Deposit(address from, uint value);
-    // Single transaction going out of the wallet (record who signed for it, how much, and to whom it's going).
-    event SingleTransact(address owner, uint value, address to, bytes data);
-    // Multi-sig transaction going out of the wallet (record who signed for it last, the operation hash, how much, and to whom it's going).
-    event MultiTransact(address owner, bytes32 operation, uint value, address to, bytes data);
-    // Confirmation still needed for a transaction.
-    event ConfirmationNeeded(bytes32 operation, address initiator, uint value, address to, bytes data);
+    mapping (bytes32 => entry) _entries;
+    mapping (address => mapping(bytes32 => Deed)) public sealedBids;
     
-    // FUNCTIONS
-    
-    // TODO: document
-    function changeOwner(address _from, address _to) external;
-    function execute(address _to, uint _value, bytes _data) external returns (bytes32);
-    function confirm(bytes32 _h) returns (bool);
-}
+    enum Mode { Open, Auction, Owned, Forbidden, Reveal, NotYetAvailable }
 
-// usage:
-// bytes32 h = Wallet(w).from(oneOwner).transact(to, value, data);
-// Wallet(w).from(anotherOwner).confirm(h);
-contract Wallet is multisig, multiowned, daylimit {
+    uint32 constant totalAuctionLength = 5 days;
+    uint32 constant revealPeriod = 48 hours;
+    uint32 public constant launchLength = 8 weeks;
 
-    uint public version = 2;
+    uint constant minPrice = 0.01 ether;
+    uint public registryStarted;
 
-    // TYPES
+    event AuctionStarted(bytes32 indexed hash, uint registrationDate);
+    event NewBid(bytes32 indexed hash, address indexed bidder, uint deposit);
+    event BidRevealed(bytes32 indexed hash, address indexed owner, uint value, uint8 status);
+    event HashRegistered(bytes32 indexed hash, address indexed owner, uint value, uint registrationDate);
+    event HashReleased(bytes32 indexed hash, uint value);
+    event HashInvalidated(bytes32 indexed hash, string indexed name, uint value, uint registrationDate);
 
-    // Transaction structure to remember details of transaction lest it need be saved for a later call.
-    struct Transaction {
-        address to;
+    struct entry {
+        Deed deed;
+        uint registrationDate;
         uint value;
-        bytes data;
+        uint highestBid;
     }
 
-    // METHODS
-
-    // constructor - just pass on the owner array to the multiowned and
-    // the limit to daylimit
-    function Wallet(address[] _owners, uint _required, uint _daylimit)
-            multiowned(_owners, _required) daylimit(_daylimit) {
-    }
-    
-    // kills the contract sending everything to `_to`.
-    function kill(address _to) onlymanyowners(sha3(msg.data, block.number)) external {
-        suicide(_to);
-    }
-    
-    // gets called when no other function matches
-    function() {
-        // just being sent some cash?
-        if (msg.value > 0)
-            Deposit(msg.sender, msg.value);
-    }
-    
-    // Outside-visible transact entry point. Executes transacion immediately if below daily spend limit.
-    // If not, goes into multisig process. We provide a hash on return to allow the sender to provide
-    // shortcuts for the other confirmations (allowing them to avoid replicating the _to, _value
-    // and _data arguments). They still get the option of using them if they want, anyways.
-    function execute(address _to, uint _value, bytes _data) external onlyowner returns (bytes32 _r) {
-        // first, take the opportunity to check that we're under the daily limit.
-        if (underLimit(_value)) {
-            SingleTransact(msg.sender, _value, _to, _data);
-            // yes - just execute the call.
-            _to.call.value(_value)(_data);
-            return 0;
-        }
-        // determine our operation hash.
-        _r = sha3(msg.data, block.number);
-        if (!confirm(_r) && m_txs[_r].to == 0) {
-            m_txs[_r].to = _to;
-            m_txs[_r].value = _value;
-            m_txs[_r].data = _data;
-            ConfirmationNeeded(_r, msg.sender, _value, _to, _data);
+    // State transitions for names:
+    //   Open -> Auction (startAuction)
+    //   Auction -> Reveal
+    //   Reveal -> Owned
+    //   Reveal -> Open (if nobody bid)
+    //   Owned -> Open (releaseDeed or invalidateName)
+    function state(bytes32 _hash) constant returns (Mode) {
+        var entry = _entries[_hash];
+        
+        if(!isAllowed(_hash, now)) {
+            return Mode.NotYetAvailable;
+        } else if(now < entry.registrationDate) {
+            if (now < entry.registrationDate - revealPeriod) {
+                return Mode.Auction;
+            } else {
+                return Mode.Reveal;
+            }
+        } else {
+            if(entry.highestBid == 0) {
+                return Mode.Open;
+            } else {
+                return Mode.Owned;
+            }
         }
     }
+
+    modifier inState(bytes32 _hash, Mode _state) {
+        if(state(_hash) != _state) throw;
+        _;
+    }
+
+    modifier onlyOwner(bytes32 _hash) {
+        if (state(_hash) != Mode.Owned || msg.sender != _entries[_hash].deed.owner()) throw;
+        _;
+    }
+
+    modifier registryOpen() {
+        if(now < registryStarted  || now > registryStarted + 4 years || ens.owner(rootNode) != address(this)) throw;
+        _;
+    }
+
+    function entries(bytes32 _hash) constant returns (Mode, address, uint, uint, uint) {
+        entry h = _entries[_hash];
+        return (state(_hash), h.deed, h.registrationDate, h.value, h.highestBid);
+    }
+
+    /**
+     * @dev Constructs a new Registrar, with the provided address as the owner of the root node.
+     * @param _ens The address of the ENS
+     * @param _rootNode The hash of the rootnode.
+     */
+    function Registrar(AbstractENS _ens, bytes32 _rootNode, uint _startDate) {
+        ens = _ens;
+        rootNode = _rootNode;
+        registryStarted = _startDate > 0 ? _startDate : now;
+    }
+
+    /**
+     * @dev Returns the maximum of two unsigned integers
+     * @param a A number to compare
+     * @param b A number to compare
+     * @return The maximum of two unsigned integers
+     */
+    function max(uint a, uint b) internal constant returns (uint max) {
+        if (a > b)
+            return a;
+        else
+            return b;
+    }
+
+    /**
+     * @dev Returns the minimum of two unsigned integers
+     * @param a A number to compare
+     * @param b A number to compare
+     * @return The minimum of two unsigned integers
+     */
+    function min(uint a, uint b) internal constant returns (uint min) {
+        if (a < b)
+            return a;
+        else
+            return b;
+    }
+
+    /**
+     * @dev Returns the length of a given string
+     * @param s The string to measure the length of
+     * @return The length of the input string
+     */
+    function strlen(string s) internal constant returns (uint) {
+        // Starting here means the LSB will be the byte we care about
+        uint ptr;
+        uint end;
+        assembly {
+            ptr := add(s, 1)
+            end := add(mload(s), ptr)
+        }
+        for (uint len = 0; ptr < end; len++) {
+            uint8 b;
+            assembly { b := and(mload(ptr), 0xFF) }
+            if (b < 0x80) {
+                ptr += 1;
+            } else if(b < 0xE0) {
+                ptr += 2;
+            } else if(b < 0xF0) {
+                ptr += 3;
+            } else if(b < 0xF8) {
+                ptr += 4;
+            } else if(b < 0xFC) {
+                ptr += 5;
+            } else {
+                ptr += 6;
+            }
+        }
+        return len;
+    }
     
-    // confirm a transaction through just the hash. we use the previous transactions map, m_txs, in order
-    // to determine the body of the transaction from the hash provided.
-    function confirm(bytes32 _h) onlymanyowners(_h) returns (bool) {
-        if (m_txs[_h].to != 0) {
-            m_txs[_h].to.call.value(m_txs[_h].value)(m_txs[_h].data);
-            MultiTransact(msg.sender, _h, m_txs[_h].value, m_txs[_h].to, m_txs[_h].data);
-            delete m_txs[_h];
-            return true;
+    /** 
+     * @dev Determines if a name is available for registration yet
+     * 
+     * Each name will be assigned a random date in which its auction 
+     * can be started, from 0 to 13 weeks
+     * 
+     * @param _hash The hash to start an auction on
+     * @param _timestamp The timestamp to query about
+     */
+     
+    function isAllowed(bytes32 _hash, uint _timestamp) constant returns (bool allowed){
+        return _timestamp > getAllowedTime(_hash);
+    }
+
+    /** 
+     * @dev Returns available date for hash
+     * 
+     * @param _hash The hash to start an auction on
+     */
+    function getAllowedTime(bytes32 _hash) constant returns (uint timestamp) {
+        return registryStarted + (launchLength*(uint(_hash)>>128)>>128);
+        // right shift operator: a >> b == a / 2**b
+    }
+    /**
+     * @dev Assign the owner in ENS, if we're still the registrar
+     * @param _hash hash to change owner
+     * @param _newOwner new owner to transfer to
+     */
+    function trySetSubnodeOwner(bytes32 _hash, address _newOwner) internal {
+        if(ens.owner(rootNode) == address(this))
+            ens.setSubnodeOwner(rootNode, _hash, _newOwner);        
+    }
+
+    /**
+     * @dev Start an auction for an available hash
+     *
+     * Anyone can start an auction by sending an array of hashes that they want to bid for.
+     * Arrays are sent so that someone can open up an auction for X dummy hashes when they
+     * are only really interested in bidding for one. This will increase the cost for an
+     * attacker to simply bid blindly on all new auctions. Dummy auctions that are
+     * open but not bid on are closed after a week.
+     *
+     * @param _hash The hash to start an auction on
+     */
+    function startAuction(bytes32 _hash) registryOpen() {
+        var mode = state(_hash);
+        if(mode == Mode.Auction) return;
+        if(mode != Mode.Open) throw;
+
+        entry newAuction = _entries[_hash];
+        newAuction.registrationDate = now + totalAuctionLength;
+        newAuction.value = 0;
+        newAuction.highestBid = 0;
+        AuctionStarted(_hash, newAuction.registrationDate);
+    }
+
+    /**
+     * @dev Start multiple auctions for better anonymity
+     * @param _hashes An array of hashes, at least one of which you presumably want to bid on
+     */
+    function startAuctions(bytes32[] _hashes)  {
+        for (uint i = 0; i < _hashes.length; i ++ ) {
+            startAuction(_hashes[i]);
         }
     }
-    
-    // INTERNAL METHODS
-    
-    function clearPending() internal {
-        uint length = m_pendingIndex.length;
-        for (uint i = 0; i < length; ++i)
-            delete m_txs[m_pendingIndex[i]];
-        super.clearPending();
+
+    /**
+     * @dev Hash the values required for a secret bid
+     * @param hash The node corresponding to the desired namehash
+     * @param value The bid amount
+     * @param salt A random value to ensure secrecy of the bid
+     * @return The hash of the bid values
+     */
+    function shaBid(bytes32 hash, address owner, uint value, bytes32 salt) constant returns (bytes32 sealedBid) {
+        return sha3(hash, owner, value, salt);
     }
 
-    // FIELDS
+    /**
+     * @dev Submit a new sealed bid on a desired hash in a blind auction
+     *
+     * Bids are sent by sending a message to the main contract with a hash and an amount. The hash
+     * contains information about the bid, including the bidded hash, the bid amount, and a random
+     * salt. Bids are not tied to any one auction until they are revealed. The value of the bid
+     * itself can be masqueraded by sending more than the value of your actual bid. This is
+     * followed by a 48h reveal period. Bids revealed after this period will be burned and the ether unrecoverable.
+     * Since this is an auction, it is expected that most public hashes, like known domains and common dictionary
+     * words, will have multiple bidders pushing the price up.
+     *
+     * @param sealedBid A sealedBid, created by the shaBid function
+     */
+    function newBid(bytes32 sealedBid) payable {
+        if (address(sealedBids[msg.sender][sealedBid]) > 0 ) throw;
+        if (msg.value < minPrice) throw;
+        // creates a new hash contract with the owner
+        Deed newBid = (new Deed).value(msg.value)(msg.sender);
+        sealedBids[msg.sender][sealedBid] = newBid;
+        NewBid(sealedBid, msg.sender, msg.value);
+    }
 
-    // pending transactions we have at present.
-    mapping (bytes32 => Transaction) m_txs;
+    /**
+     * @dev Start a set of auctions and bid on one of them
+     *
+     * This method functions identically to calling `startAuctions` followed by `newBid`,
+     * but all in one transaction.
+     * @param hashes A list of hashes to start auctions on.
+     * @param sealedBid A sealed bid for one of the auctions.
+     */
+    function startAuctionsAndBid(bytes32[] hashes, bytes32 sealedBid) payable {
+        startAuctions(hashes);
+        newBid(sealedBid);
+    }
+
+    /**
+     * @dev Submit the properties of a bid to reveal them
+     * @param _hash The node in the sealedBid
+     * @param _value The bid amount in the sealedBid
+     * @param _salt The sale in the sealedBid
+     */
+    function unsealBid(bytes32 _hash, uint _value, bytes32 _salt) {
+        bytes32 seal = shaBid(_hash, msg.sender, _value, _salt);
+        Deed bid = sealedBids[msg.sender][seal];
+        if (address(bid) == 0 ) throw;
+        sealedBids[msg.sender][seal] = Deed(0);
+        entry h = _entries[_hash];
+        uint value = min(_value, bid.value());
+        bid.setBalance(value, true);
+
+        var auctionState = state(_hash);
+        if(auctionState == Mode.Owned) {
+            // Too late! Bidder loses their bid. Get's 0.5% back.
+            bid.closeDeed(5);
+            BidRevealed(_hash, msg.sender, value, 1);
+        } else if(auctionState != Mode.Reveal) {
+            // Invalid phase
+            throw;
+        } else if (value < minPrice || bid.creationDate() > h.registrationDate - revealPeriod) {
+            // Bid too low or too late, refund 99.5%
+            bid.closeDeed(995);
+            BidRevealed(_hash, msg.sender, value, 0);
+        } else if (value > h.highestBid) {
+            // new winner
+            // cancel the other bid, refund 99.5%
+            if(address(h.deed) != 0) {
+                Deed previousWinner = h.deed;
+                previousWinner.closeDeed(995);
+            }
+
+            // set new winner
+            // per the rules of a vickery auction, the value becomes the previous highestBid
+            h.value = h.highestBid;  // will be zero if there's only 1 bidder
+            h.highestBid = value;
+            h.deed = bid;
+            BidRevealed(_hash, msg.sender, value, 2);
+        } else if (value > h.value) {
+            // not winner, but affects second place
+            h.value = value;
+            bid.closeDeed(995);
+            BidRevealed(_hash, msg.sender, value, 3);
+        } else {
+            // bid doesn't affect auction
+            bid.closeDeed(995);
+            BidRevealed(_hash, msg.sender, value, 4);
+        }
+    }
+
+    /**
+     * @dev Cancel a bid
+     * @param seal The value returned by the shaBid function
+     */
+    function cancelBid(address bidder, bytes32 seal) {
+        Deed bid = sealedBids[bidder][seal];
+        
+        // If a sole bidder does not `unsealBid` in time, they have a few more days
+        // where they can call `startAuction` (again) and then `unsealBid` during
+        // the revealPeriod to get back their bid value.
+        // For simplicity, they should call `startAuction` within
+        // 9 days (2 weeks - totalAuctionLength), otherwise their bid will be
+        // cancellable by anyone.
+        if (address(bid) == 0
+            || now < bid.creationDate() + totalAuctionLength + 2 weeks) throw;
+
+        // Send the canceller 0.5% of the bid, and burn the rest.
+        bid.setOwner(msg.sender);
+        bid.closeDeed(5);
+        sealedBids[bidder][seal] = Deed(0);
+        BidRevealed(seal, bidder, 0, 5);
+    }
+
+    /**
+     * @dev Finalize an auction after the registration date has passed
+     * @param _hash The hash of the name the auction is for
+     */
+    function finalizeAuction(bytes32 _hash) onlyOwner(_hash) {
+        entry h = _entries[_hash];
+        
+        // handles the case when there's only a single bidder (h.value is zero)
+        h.value =  max(h.value, minPrice);
+        h.deed.setBalance(h.value, true);
+
+        trySetSubnodeOwner(_hash, h.deed.owner());
+        HashRegistered(_hash, h.deed.owner(), h.value, h.registrationDate);
+    }
+
+    /**
+     * @dev The owner of a domain may transfer it to someone else at any time.
+     * @param _hash The node to transfer
+     * @param newOwner The address to transfer ownership to
+     */
+    function transfer(bytes32 _hash, address newOwner) onlyOwner(_hash) {
+        if (newOwner == 0) throw;
+
+        entry h = _entries[_hash];
+        h.deed.setOwner(newOwner);
+        trySetSubnodeOwner(_hash, newOwner);
+    }
+
+    /**
+     * @dev After some time, or if we're no longer the registrar, the owner can release
+     *      the name and get their ether back.
+     * @param _hash The node to release
+     */
+    function releaseDeed(bytes32 _hash) onlyOwner(_hash) {
+        entry h = _entries[_hash];
+        Deed deedContract = h.deed;
+        if(now < h.registrationDate + 1 years && ens.owner(rootNode) == address(this)) throw;
+
+        h.value = 0;
+        h.highestBid = 0;
+        h.deed = Deed(0);
+
+        _tryEraseSingleNode(_hash);
+        deedContract.closeDeed(1000);
+        HashReleased(_hash, h.value);        
+    }
+
+    /**
+     * @dev Submit a name 6 characters long or less. If it has been registered,
+     * the submitter will earn 50% of the deed value. We are purposefully
+     * handicapping the simplified registrar as a way to force it into being restructured
+     * in a few years.
+     * @param unhashedName An invalid name to search for in the registry.
+     *
+     */
+    function invalidateName(string unhashedName) inState(sha3(unhashedName), Mode.Owned) {
+        if (strlen(unhashedName) > 6 ) throw;
+        bytes32 hash = sha3(unhashedName);
+
+        entry h = _entries[hash];
+
+        _tryEraseSingleNode(hash);
+
+        if(address(h.deed) != 0) {
+            // Reward the discoverer with 50% of the deed
+            // The previous owner gets 50%
+            h.value = max(h.value, minPrice);
+            h.deed.setBalance(h.value/2, false);
+            h.deed.setOwner(msg.sender);
+            h.deed.closeDeed(1000);
+        }
+
+        HashInvalidated(hash, unhashedName, h.value, h.registrationDate);
+
+        h.value = 0;
+        h.highestBid = 0;
+        h.deed = Deed(0);
+    }
+
+    /**
+     * @dev Allows anyone to delete the owner and resolver records for a (subdomain of) a
+     *      name that is not currently owned in the registrar. If passing, eg, 'foo.bar.eth',
+     *      the owner and resolver fields on 'foo.bar.eth' and 'bar.eth' will all be cleared.
+     * @param labels A series of label hashes identifying the name to zero out, rooted at the
+     *        registrar's root. Must contain at least one element. For instance, to zero 
+     *        'foo.bar.eth' on a registrar that owns '.eth', pass an array containing
+     *        [sha3('foo'), sha3('bar')].
+     */
+    function eraseNode(bytes32[] labels) {
+        if(labels.length == 0) throw;
+        if(state(labels[labels.length - 1]) == Mode.Owned) throw;
+
+        _eraseNodeHierarchy(labels.length - 1, labels, rootNode);
+    }
+
+    function _tryEraseSingleNode(bytes32 label) internal {
+        if(ens.owner(rootNode) == address(this)) {
+            ens.setSubnodeOwner(rootNode, label, address(this));
+            var node = sha3(rootNode, label);
+            ens.setResolver(node, 0);
+            ens.setOwner(node, 0);
+        }
+    }
+
+    function _eraseNodeHierarchy(uint idx, bytes32[] labels, bytes32 node) internal {
+        // Take ownership of the node
+        ens.setSubnodeOwner(node, labels[idx], address(this));
+        node = sha3(node, labels[idx]);
+        
+        // Recurse if there's more labels
+        if(idx > 0)
+            _eraseNodeHierarchy(idx - 1, labels, node);
+
+        // Erase the resolver and owner records
+        ens.setResolver(node, 0);
+        ens.setOwner(node, 0);
+    }
+
+    /**
+     * @dev Transfers the deed to the current registrar, if different from this one.
+     * Used during the upgrade process to a permanent registrar.
+     * @param _hash The name hash to transfer.
+     */
+    function transferRegistrars(bytes32 _hash) onlyOwner(_hash) {
+        var registrar = ens.owner(rootNode);
+        if(registrar == address(this))
+            throw;
+
+        // Migrate the deed
+        entry h = _entries[_hash];
+        h.deed.setRegistrar(registrar);
+
+        // Call the new registrar to accept the transfer
+        Registrar(registrar).acceptRegistrarTransfer(_hash, h.deed, h.registrationDate);
+
+        // Zero out the entry
+        h.deed = Deed(0);
+        h.registrationDate = 0;
+        h.value = 0;
+        h.highestBid = 0;
+    }
+
+    /**
+     * @dev Accepts a transfer from a previous registrar; stubbed out here since there
+     *      is no previous registrar implementing this interface.
+     * @param hash The sha3 hash of the label to transfer.
+     * @param deed The Deed object for the name being transferred in.
+     * @param registrationDate The date at which the name was originally registered.
+     */
+    function acceptRegistrarTransfer(bytes32 hash, Deed deed, uint registrationDate) {}
+
 }

@@ -14,8 +14,6 @@ def main():
     parser.add_argument("-f", "--f", help="read from DB", action='store_true')
     args = parser.parse_args()
 
-    # print(analysis_code())
-
     # if args.f:
     #     # read from DB
     #     filename = "sourcecode"
@@ -24,20 +22,24 @@ def main():
     #         row_id = i[0]
     #         contract_addr = i[1]
     #         print('\n ---> Analyzing contract: {}'.format(contract_addr))
-    #         assembly_code = i[2]
+    #         runtime_op = i[2]
     #         w = open(filename, 'w')
-    #         w.write(assembly_code)
+    #         w.write(runtime_op)
     #         w.close()
-    #         code_preproc(filename)
     start_time = time.time()
-    #         result, end_node = analysis_code()
-    #         if result:
-    #             print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
-    #         else:
-    #             print('\n ---> Positive Cycle Found: [No]')
+    # code_preproc(filename)
+    result, end_node = analysis_code()
+    print(result, end_node)
+            # if result:
+            #     print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+            # else:
+            #     print('\n ---> Positive Cycle Found: [No]')
+            # print('\n', analysis_code())
     duration = time.time() - start_time
-    print(duration)
-    #         update_result_to_db(result, row_id)
+    m, s = divmod(duration, 60)
+    h, m = divmod(m, 60)
+    print(' --- Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
+            # update_result_to_db(result, row_id)
     # elif args.i:
     #     filename = args.i
     #     code_preproc(filename)
@@ -49,7 +51,7 @@ def main():
     # else:
     #     print('Must use an argument, -i for individual source code, -f use source code from DB')
 
-    # sys.exit(0)
+    sys.exit(0)
 
 
 def code_preproc(filename):
@@ -98,11 +100,12 @@ def load_from_db():
         num = cur.fetchall()[0][0]
         print(' ---> {} contract(s) waiting for analysis ---'.format(num))
         cur.execute('''
-        SELECT id, address, assembly
+        SELECT id, address, runtime_opcode
         FROM contract
-        WHERE assembly <> '' AND status = 'GOT_ASSEMBLY'
+        WHERE runtime_opcode <> ''
         ORDER BY id;
         ''')
+        # assembly <> '' AND status = 'GOT_ASSEMBLY'
     except Exception as ex:
         print(' --- Failed to select source code from database. ---')
         print('Error: ', ex)
@@ -125,7 +128,7 @@ def update_result_to_db(result, row_id):
         conn.commit()
         cur.execute('''
         UPDATE contract
-        SET analysisresult = '{}'
+        SET analysis_result = '{}'
         WHERE id='{}';
         '''.format(result, row_id))
         conn.commit()
@@ -149,31 +152,18 @@ def count_stack_size(nodes, edges):
     check_result = 0
     end_node = ''
     queue = deque([])
-    node_list = []
-    edge_list = []
-
-    for n in nodes:
-        node_idx = n[0]
-        node_list.append(node_idx)
-    for e in edges:
-        edge_idx = e[0][1]
-        edge_list.append(edge_idx)
 
     # list with all the nodes without input edge
-    graph_head = find_graph_head(node_list, edge_list)
-    # print(graph_head, len(graph_head))
+    graph_head = find_graph_head(edges)
     print('\n ---> Total {} graph(s) constructed'.format(len(graph_head)))
 
     for start_node in graph_head:
-        start_node_idx = start_node[1]
-        queue.append(nodes[start_node_idx])
+        start_node_idx = start_node[0]
+        for n in nodes:
+            node_idx = n[0]
+            if node_idx == start_node_idx:
+                queue.append(n)
 
-    # start_node = nodes[start_idx]
-    # start_node[1]['id'] = 0
-    # queue.append(start_node)
-    # queue.append(nodes[87])
-
-    # print(queue)
     print('      Checking CFG', end='')
 
     while len(queue):
@@ -202,7 +192,7 @@ def count_stack_size(nodes, edges):
                         n_label_name = n[1].get('label').split(' ')
                         # print('child node = ', n)
                         c_id = n[1].get('id')
-                        # print(f_id, edge_weight, c_id)
+                        # print(int(f_id), int(edge_weight), int(c_id))
                         if int(f_id) + int(edge_weight) > int(c_id):
                             child_node_info = n[1]
                             child_node_info['id'] = str(int(f_id) + int(edge_weight))
@@ -212,7 +202,6 @@ def count_stack_size(nodes, edges):
                                 check_result = 1
                                 end_node = n
                                 break
-                                # sys.exit(0)
                             else:
                                 queue.append(n)
                         if n_label_name[0] == 'JUMPDEST':
@@ -228,13 +217,14 @@ def count_stack_size(nodes, edges):
     return check_result, end_node
 
 
-def find_graph_head(node_list, edge_list):
+def find_graph_head(edges):
     head_list = []
 
-    for idx, n in enumerate(node_list):
-        if n not in edge_list:
-            head_list.append((n, idx))
-
+    for idx, e in enumerate(edges):
+        start_node = e[0][0]
+        end_node = e[0][1]
+        if start_node == '0':
+            head_list.append((start_node, idx))
     return head_list
 
 
@@ -257,7 +247,7 @@ def init_graph(nodes, edges):
     instruction = ''
     prev_instruction = '0'
 
-    with open('opcode_new', 'r') as f:
+    with open('opcode', 'r') as f:
         stack_header = '0'
         nodes.append((stack_header,
                       {'label': 'Start ' + stack_header,
@@ -282,16 +272,12 @@ def init_graph(nodes, edges):
             if instruction == 'JUMPDEST':
                 nodes.append((op_label,
                               {'label': 'JUMPDEST ' + op_label,
-                               'id': '0',
-                               # 'fontname': 'Helvetica',
-                               # 'shape': 'hexagon',
-                               # 'fontcolor': 'gray',
-                               # 'color': 'white',
-                               # 'style': 'filled',
-                               # 'fillcolor': '#006699',
+                               'id': '0'
                                }))
                 edge_color = 'black'
                 stack_size = '+0'
+                # if stack_header != '0':
+                #     stack_header = '0'
                 one_before_header = str(stack_header)
                 stack_header = str(op_label)
                 edges.append(((one_before_header, stack_header),
@@ -313,7 +299,7 @@ def init_graph(nodes, edges):
                 one_before_header = str(stack_header)
                 stack_header = str(op_label)
                 nodes.append((stack_header,
-                              {'label': str(stack_sum),
+                              {'label': line + ' ' + str(stack_sum),
                                'id': '-1'}))
                 jump_label = int(prev_instruction.strip().split(' ')[2], 16)
                 jump_from = str(stack_header)
@@ -329,11 +315,6 @@ def init_graph(nodes, edges):
                                'id': '0'}))
                 prev_instruction = line
                 continue
-
-            # if instruction.rstrip() == 'JUMPDEST':
-            #     tag_number = int(prev_instruction.split(' ')[1]) + 100000
-            #     stack_header = str(tag_number)
-            #     continue
 
             for key_world in stack_push_one:
                 if key_world == instruction:
@@ -394,7 +375,7 @@ def init_graph(nodes, edges):
             one_before_header = str(stack_header)
             stack_header = str(op_label)
             nodes.append((stack_header,
-                          {'label': str(stack_sum),
+                          {'label': line + ' ' + str(stack_sum),
                            'id': '-1'}))
             edges.append(((one_before_header, stack_header),
                           {'label': instruction + ' ' + stack_size,

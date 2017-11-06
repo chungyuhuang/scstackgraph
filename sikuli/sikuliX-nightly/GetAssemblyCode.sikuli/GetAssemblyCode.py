@@ -1,9 +1,9 @@
 click("1508420943640.png")
 click("1508417628938.png")
 click("1508421060778.png")
-sleep(2)
+sleep(1)
 type("v", KEY_CMD)
-sleep(10)
+sleep(9)
 click("1508420687346.png")
 if exists("1508420854131.png"):
     click("1508948017257.png")

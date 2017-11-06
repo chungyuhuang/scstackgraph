@@ -1,10 +1,11 @@
+from collections import deque
+from modules import db_connect as db
 import sys
 import graphviz as gv
 import functools
-from collections import deque
 import argparse
 import re
-import psycopg2
+import time
 
 
 def main():
@@ -14,24 +15,34 @@ def main():
     args = parser.parse_args()
 
     if args.f:
-        # read from DB
-        filename = "sourcecode"
-        cur = load_from_db()
+        db.ready_contract_count('assembly', 'GOT_ASSEMBLY')
+        cur = db.load_assembly_from_db('assembly', 'GOT_ASSEMBLY')
         for i in cur:
             row_id = i[0]
             contract_addr = i[1]
             print('\n ---> Analyzing contract: {}'.format(contract_addr))
             assembly_code = i[2]
+
+            filename = 'sourcecode'
             w = open(filename, 'w')
             w.write(assembly_code)
             w.close()
-            code_preproc(filename)
+
+            start_time = time.time()
             result, end_node = analysis_code()
+            print(result, end_node)
+
+            duration = time.time() - start_time
+            m, s = divmod(duration, 60)
+            h, m = divmod(m, 60)
+            print(' --- Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
+
             if result:
                 print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
             else:
                 print('\n ---> Positive Cycle Found: [No]')
-            update_result_to_db(result, row_id)
+
+            db.update_analysis_result_to_db('CFG_CONSTRUCTED', result, row_id)
     elif args.i:
         filename = args.i
         code_preproc(filename)
@@ -68,80 +79,18 @@ def code_preproc(filename):
     w.close()
 
 
-def connect_to_db():
-    try:
-        conn = psycopg2.connect(database="soslab", user="soslab", password="$0$1ab", host="140.119.19.77", port="65432")
-        return conn
-    except Exception as ex:
-        print(" --- Unable to connect to the database. ---")
-        print('Error: ', ex)
-        sys.exit(0)
-
-
-def load_from_db():
-    conn = connect_to_db()
-    cur = conn.cursor()
-
-    try:
-        print(' --- Querying contract assembly code from DB ---')
-        cur.execute('''
-        SELECT COUNT(*)
-        FROM contract
-        WHERE assembly <> '' AND status = 'GOT_ASSEMBLY';''')
-        num = cur.fetchall()[0][0]
-        print(' ---> {} contract(s) waiting for analysis ---'.format(num))
-        cur.execute('''
-        SELECT id, address, assembly
-        FROM contract
-        WHERE assembly <> '' AND status = 'GOT_ASSEMBLY'
-        ORDER BY id;
-        ''')
-    except Exception as ex:
-        print(' --- Failed to select source code from database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
-
-    return cur
-
-
-def update_result_to_db(result, row_id):
-    conn = connect_to_db()
-    cur = conn.cursor()
-
-    try:
-        print(' --- Updating contract analysis result to DB, id: {} ---'.format(row_id))
-        cur.execute('''
-        UPDATE contract
-        SET status = '{}'
-        WHERE id='{}';
-        '''.format('CFG_CONSTRUCTED', row_id))
-        conn.commit()
-        cur.execute('''
-        UPDATE contract
-        SET analysis_result = '{}'
-        WHERE id='{}';
-        '''.format(result, row_id))
-        conn.commit()
-    except Exception as ex:
-        print(' --- Failed to update result to database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
-
-
 def analysis_code():
+    filename = 'sourcecode'
+    code_preproc(filename)
     nodes = []
     edges = []
     init_graph(nodes, edges)
+
     # print(nodes)
     # print(edges)
-    return count_stack_size(nodes, edges)
 
+    # create_graph(nodes, edges)
 
-def count_stack_size(nodes, edges):
-    count = 0
-    check_result = 0
-    end_node = ''
-    queue = deque([])
     node_list = []
     edge_list = []
 
@@ -154,8 +103,28 @@ def count_stack_size(nodes, edges):
 
     # list with all the nodes without input edge
     graph_head = find_graph_head(node_list, edge_list)
-    # print(graph_head, len(graph_head))
     print('\n ---> Total {} graph(s) constructed'.format(len(graph_head)))
+
+    ana_result, node = count_stack_size(nodes, edges, graph_head)
+
+    return ana_result, node
+
+
+def find_graph_head(node_list, edge_list):
+    head_list = []
+
+    for idx, n in enumerate(node_list):
+        if n not in edge_list:
+            head_list.append((n, idx))
+
+    return head_list
+
+
+def count_stack_size(nodes, edges, graph_head):
+    count = 0
+    check_result = 0
+    end_node = ''
+    queue = deque([])
 
     for start_node in graph_head:
         start_node_idx = start_node[1]
@@ -165,8 +134,8 @@ def count_stack_size(nodes, edges):
     # start_node[1]['id'] = 0
     # queue.append(start_node)
     # queue.append(nodes[87])
-
     # print(queue)
+
     print('      Checking CFG', end='')
 
     while len(queue):
@@ -221,16 +190,6 @@ def count_stack_size(nodes, edges):
     return check_result, end_node
 
 
-def find_graph_head(node_list, edge_list):
-    head_list = []
-
-    for idx, n in enumerate(node_list):
-        if n not in edge_list:
-            head_list.append((n, idx))
-
-    return head_list
-
-
 def init_graph(nodes, edges):
     print(' ---> Initiating Control Flow Graph')
 
@@ -278,19 +237,32 @@ def init_graph(nodes, edges):
                                'style': 'filled',
                                'fillcolor': '#006699',
                                }))
-                edge_color = 'black'
-                stack_size = '+0'
-                one_before_header = str(stack_header)
-                stack_header = str(tag_number)
-                edges.append(((one_before_header, stack_header),
-                              {'label': instruction + ' ' + stack_size,
-                               'color': edge_color,
-                               'id': str(stack_size)}))
+
+                if prev_instruction.rstrip() == 'JUMP [out]'\
+                        or prev_instruction.rstrip().split(' ')[0] in ['RETURN', 'STOP']:
+                    stack_header = str(tag_number)
+                    continue
+                else:
+                    edge_color = 'black'
+                    stack_size = '+0'
+                    one_before_header = str(stack_header)
+                    stack_header = str(tag_number)
+                    edges.append(((one_before_header, stack_header),
+                                  {'label': instruction + ' ' + stack_size,
+                                   'color': edge_color,
+                                   'id': str(stack_size)}))
+
                 prev_instruction = line
                 continue
 
-            if instruction in ['JUMP', 'JUMPI'] and prev_instruction.strip().split(' ')[0] == 'PUSH':
+            if instruction.rstrip() == 'JUMPDEST':
+                continue
+
+            if instruction in ['JUMP', 'JUMPI']:
+                func_out = 0
                 if instruction == 'JUMP':
+                    if len(s) > 1 and s[1] == '[out]':
+                        func_out = 1
                     stack_size = '-1'
                     stack_sum -= 1
 
@@ -300,27 +272,25 @@ def init_graph(nodes, edges):
 
                 one_before_header = str(stack_header)
                 stack_header = str(idx)
-                nodes.append((stack_header,
-                              {'label': '',
-                               'id': '-1'}))
-                tag_number = int(prev_instruction.split(' ')[2])
-                jump_from = str(stack_header)
-                jump_to = str(tag_number + 100000)
                 edge_color = 'blue'
                 edges.append(((one_before_header, stack_header),
                               {'label': instruction + ' ' + stack_size,
                                'color': edge_color,
                                'id': str(stack_size)}))
-                edges.append(((jump_from, jump_to),
-                              {'label': '',
-                               'color': edge_color,
-                               'id': '0'}))
-                prev_instruction = line
-                continue
 
-            if instruction.rstrip() == 'JUMPDEST':
-                tag_number = int(prev_instruction.split(' ')[1]) + 100000
-                stack_header = str(tag_number)
+                if prev_instruction.strip().split(' ')[0] == 'PUSH' and not func_out:
+                    nodes.append((stack_header,
+                                  {'label': line,
+                                   'id': '-1'}))
+                    tag_number = int(prev_instruction.split(' ')[2])
+                    jump_from = str(stack_header)
+                    jump_to = str(tag_number + 100000)
+                    edges.append(((jump_from, jump_to),
+                                  {'label': '',
+                                   'color': edge_color,
+                                   'id': '0'}))
+
+                prev_instruction = line
                 continue
 
             for key_world in stack_push_one:
@@ -381,7 +351,7 @@ def init_graph(nodes, edges):
             one_before_header = str(stack_header)
             stack_header = str(idx)
             nodes.append((stack_header,
-                          {'label': str(stack_sum),
+                          {'label': line + ' ' + str(stack_sum),
                            'id': '-1'}))
             edges.append(((one_before_header, stack_header),
                           {'label': instruction + ' ' + stack_size,
@@ -389,7 +359,6 @@ def init_graph(nodes, edges):
                            'id': str(stack_size)}))
             prev_instruction = line
     print(' ---> Control Flow Graph Constructed')
-    # create_graph(nodes, edges)
 
 
 def create_graph(n, e):
