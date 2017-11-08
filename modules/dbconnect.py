@@ -115,7 +115,7 @@ def update_crawling_to_db(args, conn, row_id, input_code):
 
     cur = conn.cursor()
 
-    if args.r:
+    if args.op:
         try:
             input_code = input_code.replace("'", "")
             cur.execute('''

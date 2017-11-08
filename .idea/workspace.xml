@@ -2,8 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0ddf3e0a-2de7-4d98-a90f-344d5413d937" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/graph_v1.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/geckodriver.log" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/sikuli/sikuliX-nightly/GetAssemblyCode.sikuli/1508421060778.png" afterPath="" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/modules/db_connect.py" afterPath="$PROJECT_DIR$/modules/dbconnect.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/crawler.py" afterPath="$PROJECT_DIR$/crawler.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/graph_asm.py" afterPath="$PROJECT_DIR$/graph_asm.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/modules/__init__.py" afterPath="$PROJECT_DIR$/modules/__init__.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sikuli/sikuliX-nightly/GetAssemblyCode.sikuli/GetAssemblyCode.html" afterPath="$PROJECT_DIR$/sikuli/sikuliX-nightly/GetAssemblyCode.sikuli/GetAssemblyCode.html" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sikuli/sikuliX-nightly/GetAssemblyCode.sikuli/GetAssemblyCode.py" afterPath="$PROJECT_DIR$/sikuli/sikuliX-nightly/GetAssemblyCode.sikuli/GetAssemblyCode.py" />
     </list>
     <ignored path="solidity_stack_graph.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -38,8 +45,8 @@
       <file leaf-file-name="graph_asm.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/graph_asm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="221">
-              <caret line="20" column="25" selection-start-line="20" selection-start-column="25" selection-end-line="20" selection-end-column="25" />
+            <state relative-caret-position="-442">
+              <caret line="38" column="28" selection-start-line="38" selection-start-column="28" selection-end-line="38" selection-end-column="28" />
               <folding>
                 <element signature="e#0#29#0" expanded="true" />
               </folding>
@@ -47,11 +54,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="crawler.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="crawler.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/crawler.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="782">
-              <caret line="54" column="26" selection-start-line="54" selection-start-column="26" selection-end-line="54" selection-end-column="26" />
+            <state relative-caret-position="680">
+              <caret line="54" column="25" selection-start-line="54" selection-start-column="25" selection-end-line="54" selection-end-column="25" />
               <folding>
                 <element signature="e#0#30#0" expanded="true" />
               </folding>
@@ -59,11 +66,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="db_connect.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/modules/db_connect.py">
+      <file leaf-file-name="dbconnect.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/modules/dbconnect.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="670">
-              <caret line="70" column="0" selection-start-line="70" selection-start-column="0" selection-end-line="70" selection-end-column="0" />
+            <state relative-caret-position="1258">
+              <caret line="116" column="0" selection-start-line="116" selection-start-column="0" selection-end-line="116" selection-end-column="0" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -71,21 +78,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name=".gitignore" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/.gitignore">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="422">
-              <caret line="119" column="0" selection-start-line="119" selection-start-column="0" selection-end-line="119" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="opcode" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/opcode">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="61625">
-              <caret line="3625" column="3" selection-start-line="3625" selection-start-column="3" selection-end-line="3625" selection-end-column="3" />
+            <state relative-caret-position="-102">
+              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -94,8 +91,8 @@
       <file leaf-file-name="sourcecode" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/sourcecode">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="43860">
-              <caret line="2580" column="1" selection-start-line="2580" selection-start-column="1" selection-end-line="2580" selection-end-column="1" />
+            <state relative-caret-position="-102">
+              <caret line="385" column="1" selection-start-line="385" selection-start-column="1" selection-end-line="385" selection-end-column="1" />
               <folding />
             </state>
           </provider>
@@ -133,9 +130,10 @@
         <option value="$PROJECT_DIR$/graph_op.py" />
         <option value="$PROJECT_DIR$/opcode" />
         <option value="$PROJECT_DIR$/modules/__init__.py" />
-        <option value="$PROJECT_DIR$/crawler.py" />
         <option value="$PROJECT_DIR$/modules/db_connect.py" />
         <option value="$PROJECT_DIR$/graph_asm.py" />
+        <option value="$PROJECT_DIR$/modules/dbconnect.py" />
+        <option value="$PROJECT_DIR$/crawler.py" />
         <option value="$PROJECT_DIR$/.gitignore" />
       </list>
     </option>
@@ -186,6 +184,20 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="solidity_stack_graph" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="solidity_stack_graph" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="solidity_stack_graph" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="script" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -406,7 +418,7 @@
     <frame x="0" y="0" width="1280" height="800" extended-state="0" />
     <editor active="false" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.12708499" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.16600476" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32739726" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.28356165" sideWeight="0.50277996" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32876712" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
@@ -760,64 +772,65 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/sourcecode">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-102">
+          <caret line="385" column="1" selection-start-line="385" selection-start-column="1" selection-end-line="385" selection-end-column="1" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/opcode">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-102">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/modules/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="17">
           <caret line="1" column="0" selection-start-line="1" selection-start-column="0" selection-end-line="1" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/crawler.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="782">
-          <caret line="54" column="26" selection-start-line="54" selection-start-column="26" selection-end-line="54" selection-end-column="26" />
-          <folding>
-            <element signature="e#0#30#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/graph_asm.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="221">
-          <caret line="20" column="25" selection-start-line="20" selection-start-column="25" selection-end-line="20" selection-end-column="25" />
+        <state relative-caret-position="-442">
+          <caret line="38" column="28" selection-start-line="38" selection-start-column="28" selection-end-line="38" selection-end-column="28" />
           <folding>
             <element signature="e#0#29#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/modules/db_connect.py">
+    <entry file="file://$PROJECT_DIR$/modules/dbconnect.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="670">
-          <caret line="70" column="0" selection-start-line="70" selection-start-column="0" selection-end-line="70" selection-end-column="0" />
+        <state relative-caret-position="1258">
+          <caret line="116" column="0" selection-start-line="116" selection-start-column="0" selection-end-line="116" selection-end-column="0" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/opcode">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="61625">
-          <caret line="3625" column="3" selection-start-line="3625" selection-start-column="3" selection-end-line="3625" selection-end-column="3" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sourcecode">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="43860">
-          <caret line="2580" column="1" selection-start-line="2580" selection-start-column="1" selection-end-line="2580" selection-end-column="1" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/.gitignore">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="422">
-          <caret line="119" column="0" selection-start-line="119" selection-start-column="0" selection-end-line="119" selection-end-column="0" />
+        <state relative-caret-position="378">
+          <caret line="118" column="12" selection-start-line="118" selection-start-column="12" selection-end-line="118" selection-end-column="12" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/crawler.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="680">
+          <caret line="54" column="25" selection-start-line="54" selection-start-column="25" selection-end-line="54" selection-end-column="25" />
+          <folding>
+            <element signature="e#0#30#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

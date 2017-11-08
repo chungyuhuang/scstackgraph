@@ -1,5 +1,5 @@
 from collections import deque
-from modules import db_connect as db
+from modules import dbconnect as db
 import sys
 import graphviz as gv
 import functools
@@ -20,7 +20,7 @@ def main():
         for i in cur:
             row_id = i[0]
             contract_addr = i[1]
-            print('\n ---> Analyzing contract: {}'.format(contract_addr))
+            print('\n ---> Analyzing contract id {}'.format(row_id))
             assembly_code = i[2]
 
             filename = 'sourcecode'
@@ -29,18 +29,19 @@ def main():
             w.close()
 
             start_time = time.time()
+            print('     ---> Start checking contract {}'.format(contract_addr))
             result, end_node = analysis_code()
             print(result, end_node)
 
             duration = time.time() - start_time
             m, s = divmod(duration, 60)
             h, m = divmod(m, 60)
-            print(' --- Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
+            print('\n       ---> Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
 
             if result:
-                print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+                print('     ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
             else:
-                print('\n ---> Positive Cycle Found: [No]')
+                print('     ---> Positive Cycle Found: [No]')
 
             db.update_analysis_result_to_db('CFG_CONSTRUCTED', result, row_id)
     elif args.i:
@@ -48,16 +49,15 @@ def main():
         code_preproc(filename)
         result, end_node = analysis_code()
         if result:
-            print('\n ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+            print('     ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
         else:
-            print('\n ---> Positive Cycle Found: [No]')
+            print('     ---> Positive Cycle Found: [No]')
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
         sys.exit(0)
 
 
 def code_preproc(filename):
-    print(' --- Start checking contract \"{}\" ---'.format(filename))
     w = open('opcode', 'w')
 
     with open(filename, 'r') as f:
@@ -101,9 +101,10 @@ def analysis_code():
         edge_idx = e[0][1]
         edge_list.append(edge_idx)
 
+    print('         ---> {} nodes, {} edges'.format(len(node_list), len(edge_list)))
     # list with all the nodes without input edge
     graph_head = find_graph_head(node_list, edge_list)
-    print('\n ---> Total {} graph(s) constructed'.format(len(graph_head)))
+    print('         ---> Total {} graph(s) constructed'.format(len(graph_head)))
 
     ana_result, node = count_stack_size(nodes, edges, graph_head)
 
@@ -136,10 +137,10 @@ def count_stack_size(nodes, edges, graph_head):
     # queue.append(nodes[87])
     # print(queue)
 
-    print('      Checking CFG', end='')
+    print('             Checking CFG', end='')
 
     while len(queue):
-        if count % 10000 == 0:
+        if count % 50000 == 0:
             print('.', end='')
             sys.stdout.flush()
 
@@ -191,7 +192,7 @@ def count_stack_size(nodes, edges, graph_head):
 
 
 def init_graph(nodes, edges):
-    print(' ---> Initiating Control Flow Graph')
+    print('         ---> Initiating Control Flow Graph')
 
     stack_push_one = ['PUSH', 'DUP', 'CALLER', 'CALLVALUE', 'GAS', 'CALLDATASIZE', 'PC', 'MSIZE',
                       'COINBASE', 'GASLIMIT', 'DIFFICULTY', 'TIMESTAMP', 'NUMBER', 'CODESIZE', 'GASPRICE', 'ADDRESS',
@@ -358,7 +359,7 @@ def init_graph(nodes, edges):
                            'color': edge_color,
                            'id': str(stack_size)}))
             prev_instruction = line
-    print(' ---> Control Flow Graph Constructed')
+    print('         ---> Control Flow Graph Constructed')
 
 
 def create_graph(n, e):

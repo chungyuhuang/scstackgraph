@@ -1,7 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from subprocess import check_output
-from modules import db_connect as db
+from modules import dbconnect as db
 import pyperclip
 import subprocess
 import time
@@ -12,7 +12,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-asm", "--asm", help="generate assembly code", action='store_true')
-    parser.add_argument("-r", "--r", help="generate runtime binary", action='store_true')
+    parser.add_argument("-op", "--op", help="generate runtime opcode", action='store_true')
     args = parser.parse_args()
 
     # chrome_path = "/Users/soslab/Downloads/chromedriver"
@@ -29,7 +29,7 @@ def main():
         row_id = i[0]
         code = i[1]
 
-        if args.r:
+        if args.op:
             w = open('contract.sol', 'w')
             w.write(code)
             w.close()
@@ -52,7 +52,7 @@ def main():
         elif args.asm:
             pyperclip.copy(code)
             copy_assembly_code()
-            time.sleep(45)
+            time.sleep(50)
             db.update_crawling_to_db(args, conn, row_id, code)
         else:
             print('Must use an argument, -asm for assembly, -r for runtime binary.')

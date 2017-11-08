@@ -1,6 +1,6 @@
 click("1508420943640.png")
 click("1508417628938.png")
-click("1508421060778.png")
+click("1510076664358.png")
 sleep(1)
 type("v", KEY_CMD)
 sleep(9)
