@@ -115,5 +115,7 @@ test6
 innerfunction
 opcode
 opcode_new
+opcode_tmp
 sourcecode
 contract.sol
+/img/*

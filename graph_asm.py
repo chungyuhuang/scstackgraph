@@ -6,6 +6,7 @@ import functools
 import argparse
 import re
 import time
+import os
 
 
 def main():
@@ -29,170 +30,97 @@ def main():
             w.close()
 
             start_time = time.time()
-            print('     ---> Start checking contract {}'.format(contract_addr))
-            result, end_node = analysis_code()
-            print(result, end_node)
+            print('\t---> Start checking contract {}'.format(contract_addr))
+            result = asm_analysis(row_id)
 
             duration = time.time() - start_time
             m, s = divmod(duration, 60)
             h, m = divmod(m, 60)
-            print('\n       ---> Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
+            print('\t--- Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
 
             if result:
-                print('     ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+                print('\t---> Positive Cycle Found: [Yes] {}'.format(result))
             else:
-                print('     ---> Positive Cycle Found: [No]')
+                print('\t---> Positive Cycle Found: [No] {}'.format(result))
 
-            db.update_analysis_result_to_db('CFG_CONSTRUCTED', result, row_id)
+            # db.update_analysis_result_to_db('CFG_CONSTRUCTED', result, row_id)
     elif args.i:
         filename = args.i
         code_preproc(filename)
-        result, end_node = analysis_code()
+        result = asm_analysis()
         if result:
-            print('     ---> Positive Cycle Found: [Yes] node {}'.format(end_node))
+            print('\t---> Positive Cycle Found: [Yes]')
         else:
-            print('     ---> Positive Cycle Found: [No]')
+            print('\t---> Positive Cycle Found: [No]')
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
         sys.exit(0)
 
 
-def code_preproc(filename):
-    w = open('opcode', 'w')
+def asm_analysis(row_id=0):
+    filename = 'sourcecode'
+    code_preproc(filename)
 
-    with open(filename, 'r') as f:
+    nodes = []
+    edges = []
+
+    node_list, edge_list = init_graph(nodes, edges)
+
+    # list with all the nodes without input edge
+    graph_head = find_graph_head(node_list, edge_list)
+
+    ana_result, cycle_nodes, cycle_count = count_stack_size(nodes, edges, graph_head)
+
+    if cycle_count > 0:
+        cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges, row_id)
+        create_graph(cycle_nodes_list, cycle_edges, row_id)
+        mapping_to_sourcecode(cycle_nodes_list, row_id)
+
+    return ana_result
+
+
+def code_preproc(filename):
+    f_op = os.path.join(os.path.dirname(__file__), 'opcode')
+    f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
+    f_src = os.path.join(os.path.dirname(__file__), filename)
+
+    w = open(f_op, 'w')
+    w2 = open(f_op_tmp, 'w')
+
+    with open(f_src, 'r') as f:
         is_data = 0
         for idx, line in enumerate(f):
             is_tag = 0
-            new_line = line.split('			')
-            check_tag = new_line[0].split('    tag')
-            if is_data:
-                if len(check_tag) == 2:
-                    is_tag = 1
-                if len(new_line) > 1 or is_tag:
-                    if new_line[0].rstrip().strip() == 'REVERT':
-                        continue
-                    else:
-                        w.write(new_line[0].rstrip().strip() + '\n')
+            new_line = line.replace('\t', ' ').split(' ')
             if new_line[0].rstrip() == '.data':
                 is_data = 1
+                continue
+            if is_data:
+                if len(new_line) > 8:
+                    if new_line[4].rstrip() == 'tag':
+                        is_tag = 1
+                    if new_line[6].rstrip().strip() == 'REVERT':
+                        continue
+                    else:
+                        if is_tag:
+                            w.write(new_line[4].rstrip().strip() + ' '
+                                    + new_line[5].rstrip().strip() + '\n')
+                            for l in range(4, len(new_line)):
+                                w2.write(new_line[l].rstrip().strip() + ' ')
+                            w2.write('\n')
+                        elif new_line[6] != '':
+                            w.write(new_line[6].rstrip().strip() + ' '
+                                    + new_line[7].rstrip().strip() + ' '
+                                    + new_line[8].rstrip().strip() + '\n')
+                            for l in range(6, len(new_line)):
+                                w2.write(new_line[l].rstrip().strip() + ' ')
+                            w2.write('\n')
     w.close()
-
-
-def analysis_code():
-    filename = 'sourcecode'
-    code_preproc(filename)
-    nodes = []
-    edges = []
-    init_graph(nodes, edges)
-
-    # print(nodes)
-    # print(edges)
-
-    # create_graph(nodes, edges)
-
-    node_list = []
-    edge_list = []
-
-    for n in nodes:
-        node_idx = n[0]
-        node_list.append(node_idx)
-    for e in edges:
-        edge_idx = e[0][1]
-        edge_list.append(edge_idx)
-
-    print('         ---> {} nodes, {} edges'.format(len(node_list), len(edge_list)))
-    # list with all the nodes without input edge
-    graph_head = find_graph_head(node_list, edge_list)
-    print('         ---> Total {} graph(s) constructed'.format(len(graph_head)))
-
-    ana_result, node = count_stack_size(nodes, edges, graph_head)
-
-    return ana_result, node
-
-
-def find_graph_head(node_list, edge_list):
-    head_list = []
-
-    for idx, n in enumerate(node_list):
-        if n not in edge_list:
-            head_list.append((n, idx))
-
-    return head_list
-
-
-def count_stack_size(nodes, edges, graph_head):
-    count = 0
-    check_result = 0
-    end_node = ''
-    queue = deque([])
-
-    for start_node in graph_head:
-        start_node_idx = start_node[1]
-        queue.append(nodes[start_node_idx])
-
-    # start_node = nodes[start_idx]
-    # start_node[1]['id'] = 0
-    # queue.append(start_node)
-    # queue.append(nodes[87])
-    # print(queue)
-
-    print('             Checking CFG', end='')
-
-    while len(queue):
-        if count % 50000 == 0:
-            print('.', end='')
-            sys.stdout.flush()
-
-        count += 1
-        father_node = queue.popleft()
-        # print('\nfather node = ', father_node)
-        f_idx = father_node[0]
-        f_id = father_node[1].get('id')
-
-        for e in edges:
-            is_jumpdest = 0
-            edge_relation = e[0]
-            edge_from = edge_relation[0]
-            edge_to = edge_relation[1]
-            edge_weight = e[1].get('id')
-
-            if edge_from == f_idx:
-                # print('edge = ', e)
-                for n in nodes:
-                    child_idx = n[0]
-                    if edge_to == child_idx:
-                        n_label_name = n[1].get('label').split(' ')
-                        # print('child node = ', n)
-                        c_id = n[1].get('id')
-                        # print(f_id, edge_weight, c_id)
-                        if int(f_id) + int(edge_weight) > int(c_id):
-                            child_node_info = n[1]
-                            child_node_info['id'] = str(int(f_id) + int(edge_weight))
-                            check_c_id = child_node_info.get('id')
-                            # print(check_c_id)
-                            if int(check_c_id) > 1023:
-                                check_result = 1
-                                end_node = n
-                                break
-                                # sys.exit(0)
-                            else:
-                                queue.append(n)
-                        if n_label_name[0] == 'JUMPDEST':
-                            is_jumpdest = 1
-                            continue
-                        else:
-                            break
-                if is_jumpdest:
-                    continue
-                else:
-                    break
-        # print('queue = ', queue)
-    return check_result, end_node
+    w2.close()
 
 
 def init_graph(nodes, edges):
-    print('         ---> Initiating Control Flow Graph')
+    print('\t>>> Initiating Control Flow Graph')
 
     stack_push_one = ['PUSH', 'DUP', 'CALLER', 'CALLVALUE', 'GAS', 'CALLDATASIZE', 'PC', 'MSIZE',
                       'COINBASE', 'GASLIMIT', 'DIFFICULTY', 'TIMESTAMP', 'NUMBER', 'CODESIZE', 'GASPRICE', 'ADDRESS',
@@ -209,7 +137,9 @@ def init_graph(nodes, edges):
     edge_color = 'black'
     prev_instruction = '0'
 
-    with open('opcode', 'r') as f:
+    f_op = os.path.join(os.path.dirname(__file__), 'opcode')
+
+    with open(f_op, 'r') as f:
         stack_header = '100000'
         nodes.append((stack_header,
                       {'label': 'JUMPDEST ' + stack_header,
@@ -221,6 +151,7 @@ def init_graph(nodes, edges):
                        'style': 'filled',
                        'fillcolor': '#006699',
                        }))
+
         for idx, line in enumerate(f):
             s = line.rstrip().split(' ')
             if 'LOG' not in s[0]:
@@ -229,7 +160,7 @@ def init_graph(nodes, edges):
             if instruction == 'tag':
                 tag_number = str(int(s[1]) + 100000)
                 nodes.append((tag_number,
-                              {'label': 'JUMPDEST ' + tag_number,
+                              {'label': str(idx) + ' JUMPDEST ' + tag_number,
                                'id': '0',
                                'fontname': 'Helvetica',
                                'shape': 'hexagon',
@@ -245,13 +176,13 @@ def init_graph(nodes, edges):
                     continue
                 else:
                     edge_color = 'black'
-                    stack_size = '+0'
+                    stack_size = '0'
                     one_before_header = str(stack_header)
                     stack_header = str(tag_number)
                     edges.append(((one_before_header, stack_header),
-                                  {'label': instruction + ' ' + stack_size,
+                                  {'label': str(idx) + ' ' + instruction + ' ' + stack_size,
                                    'color': edge_color,
-                                   'id': str(stack_size)}))
+                                   'id': stack_size}))
 
                 prev_instruction = line
                 continue
@@ -275,19 +206,19 @@ def init_graph(nodes, edges):
                 stack_header = str(idx)
                 edge_color = 'blue'
                 edges.append(((one_before_header, stack_header),
-                              {'label': instruction + ' ' + stack_size,
+                              {'label': str(idx) + ' ' + instruction + ' ' + stack_size,
                                'color': edge_color,
-                               'id': str(stack_size)}))
+                               'id': stack_size}))
 
                 if prev_instruction.strip().split(' ')[0] == 'PUSH' and not func_out:
                     nodes.append((stack_header,
-                                  {'label': line,
+                                  {'label': str(idx) + ' ' + line,
                                    'id': '-1'}))
                     tag_number = int(prev_instruction.split(' ')[2])
                     jump_from = str(stack_header)
                     jump_to = str(tag_number + 100000)
                     edges.append(((jump_from, jump_to),
-                                  {'label': '',
+                                  {'label': str(idx) + ' ',
                                    'color': edge_color,
                                    'id': '0'}))
 
@@ -352,49 +283,167 @@ def init_graph(nodes, edges):
             one_before_header = str(stack_header)
             stack_header = str(idx)
             nodes.append((stack_header,
-                          {'label': line + ' ' + str(stack_sum),
+                          {'label': str(idx) + ' ' + line,
                            'id': '-1'}))
             edges.append(((one_before_header, stack_header),
-                          {'label': instruction + ' ' + stack_size,
+                          {'label': str(idx) + ' ' + instruction + ' ' + stack_size,
                            'color': edge_color,
                            'id': str(stack_size)}))
             prev_instruction = line
-    print('         ---> Control Flow Graph Constructed')
+    print('\t\t<<< Control Flow Graph Constructed')
+
+    node_list = []
+    edge_list = []
+
+    for n in nodes:
+        node_idx = n[0]
+        node_list.append(node_idx)
+    for e in edges:
+        edge_idx = e[0][1]
+        edge_list.append(edge_idx)
+
+    print('\t--- {} nodes, {} edges'.format(len(node_list), len(edge_list)))
+
+    return node_list, edge_list
 
 
-def create_graph(n, e):
+def find_graph_head(node_list, edge_list):
+    head_list = []
+
+    for idx, n in enumerate(node_list):
+        if n not in edge_list:
+            head_list.append((n, idx))
+
+    print('\t--- Total {} graph(s) constructed'.format(len(head_list)))
+
+    return head_list
+
+
+def count_stack_size(nodes, edges, graph_head):
+    count = 0
+    check_result = 0
+    cycle_count = 0
+    cycle_nodes = []
+    queue = deque([])
+
+    for start_node in graph_head:
+        start_node_idx = start_node[1]
+        queue.append(nodes[start_node_idx])
+
+    print('\t>>> Checking CFG ', end='')
+
+    while len(queue):
+        if count % 1000 == 0:
+            print('.', end='')
+            sys.stdout.flush()
+
+        count += 1
+        father_node = queue.popleft()
+        # print('\nfather node = ', father_node)
+        f_idx = father_node[0]
+        f_id = father_node[1].get('id')
+
+        for e in edges:
+            edge_relation = e[0]
+            edge_from = edge_relation[0]
+            edge_to = edge_relation[1]
+            edge_weight = e[1].get('id')
+
+            if edge_from == f_idx:
+                # print('edge = ', e)
+                for n in nodes:
+                    child_idx = n[0]
+                    if edge_to == child_idx:
+                        n_label_idx = n[1].get('label').split(' ')
+                        # print('child node = ', n)
+                        c_id = n[1].get('id')
+                        # print(f_id, edge_weight, c_id)
+                        if int(f_id) + int(edge_weight) > int(c_id):
+                            child_node_info = n[1]
+                            if int(c_id) > 0 \
+                                    and int(child_idx) > 100000 \
+                                    and 'JUMP' in father_node[1].get('label')\
+                                    and father_node[1].get('label').rstrip().split()[1] != 'JUMPDEST':
+                                if int(f_idx) > int(n_label_idx[0]):
+                                    cycle_nodes.append((father_node, n))
+                                    cycle_count += 1
+                                    check_result = 1
+                                    child_node_info['id'] = str(int(f_id) + int(edge_weight))
+                                    break
+                            else:
+                                child_node_info['id'] = str(int(f_id) + int(edge_weight))
+                                queue.appendleft(n)
+                                break
+        # print('queue = ', queue)
+    print('\n\t\t<<< Done, Found {} cycle(s) from assembly code'.format(cycle_count))
+
+    return check_result, cycle_nodes, cycle_count
+
+
+def cycle_graph(cycle_nodes, nodes, edges, row_id):
+    cycle_nodes_list = []
+    cycle_edges = []
+
+    for cn in cycle_nodes:
+        start_node_label = cn[1][0]
+        end_node_label = cn[0][0]
+        real_start = start_node_label
+        for n in nodes:
+            n_label = n[0]
+            if n_label == start_node_label:
+                cycle_nodes_list.append(n)
+                start_node_idx = n[1].get('label').rstrip().split(' ')[0]
+                for e in edges:
+                    e_from = e[0][0]
+                    e_to = e[0][1]
+                    if e_from == end_node_label and e_to == real_start:
+                            cycle_edges.append(e)
+                            break
+                    if start_node_label == e_from:
+                        tag_idx = e[1].get('label').rstrip().split(' ')
+                        if len(tag_idx) > 1:
+                            if tag_idx[1] == 'tag':
+                                e_to_idx = tag_idx[0]
+                            else:
+                                e_to_idx = e[0][1]
+                        else:
+                            e_to_idx = e[0][1]
+                        if int(e_to_idx) - int(start_node_idx) < 3:
+                            cycle_edges.append(e)
+                            start_node_label = e_to
+                            break
+                        else:
+                            continue
+
+    return cycle_nodes_list, cycle_edges
+
+
+def mapping_to_sourcecode(cycle_nodes, row_id):
+    print('\t>>> Mapping cycle node to source code')
+    f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
+    f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
+
+    w = open(f_src_tmp, 'w')
+
+    with open(f_op_tmp, 'r') as f:
+        for idx, line in enumerate(f):
+            for n in cycle_nodes:
+                n_label = n[1].get('label').rstrip().split(' ')
+                if int(n_label[0]) == idx:
+                    src = line.rstrip().split('  ')
+                    w.write(src[-1].strip() + '\n')
+                    break
+    w.close()
+    print('\t\t<<< Finishing mapping')
+
+
+def create_graph(n, e, row_id):
+    print('\t>>> Visualizing graph')
     digraph = functools.partial(gv.Digraph, format='svg')
-    # g1 = apply_styles(add_edges(add_nodes(digraph(), nodes), edges), styles)
     g1 = add_edges(add_nodes(digraph(), n), e)
-    # g1.render(filename='img/g1')
-
-    # g8 = apply_styles(
-    #     add_edges(
-    #         add_nodes(digraph(), [
-    #             ('DD', {'label': 'Node D'}),
-    #             ('EE', {'label': 'Node E'}),
-    #             'FF'
-    #         ]),
-    #         [
-    #             (('DD', 'EE'), {'label': 'Edge 3'}),
-    #             (('DD', 'FF'), {'label': 'Edge 4'}),
-    #             ('EE', 'FF')
-    #         ]
-    #     ),
-    #     {
-    #         'nodes': {
-    #             'shape': 'square',
-    #             'style': 'filled',
-    #             'fillcolor': '#cccccc',
-    #         }
-    #     }
-    # )
-    #
-    # g1.subgraph(g8)
-    # g1.edge('B', 'EE', color='red', weight='2')
-    print(' ---> Rendering graph')
-    g1.render(filename='img/g1')
-    print(' ---> Graph Constructed')
+    filename = 'img/{}/g{}'.format(row_id, row_id)
+    g1.render(filename=filename)
+    print('\t\t<<< Visualize graph constructed')
 
 
 def add_nodes(graph, nodes):
