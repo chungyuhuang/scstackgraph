@@ -36,22 +36,20 @@ def main():
             duration = time.time() - start_time
             m, s = divmod(duration, 60)
             h, m = divmod(m, 60)
-            print('\t--- Time using: {:2.0f}h{:2.0f}m{:2.0f}s'.format(h, m, s))
+            print('\t [Time using: {:2.0f}h{:2.0f}m{:2.0f}s]'.format(h, m, s))
 
             if result:
-                print('\t---> Positive Cycle Found: [Yes] {}'.format(result))
+                print(' ---> Positive Cycle Found: [Yes] {}'.format(result))
             else:
-                print('\t---> Positive Cycle Found: [No] {}'.format(result))
-
-            # db.update_analysis_result_to_db('CFG_CONSTRUCTED', result, row_id)
+                print(' ---> Positive Cycle Found: [No] {}'.format(result))
     elif args.i:
         filename = args.i
         code_preproc(filename)
         result = asm_analysis()
         if result:
-            print('\t---> Positive Cycle Found: [Yes]')
+            print(' ---> Positive Cycle Found: [Yes]')
         else:
-            print('\t---> Positive Cycle Found: [No]')
+            print(' ---> Positive Cycle Found: [No]')
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
         sys.exit(0)
@@ -59,22 +57,25 @@ def main():
 
 def asm_analysis(row_id=0):
     filename = 'sourcecode'
-    code_preproc(filename)
+    op = code_preproc(filename)
+    print(op)
+    db.update_opcode_to_db(op, row_id)
 
     nodes = []
     edges = []
 
     node_list, edge_list = init_graph(nodes, edges)
-
     # list with all the nodes without input edge
     graph_head = find_graph_head(node_list, edge_list)
 
     ana_result, cycle_nodes, cycle_count = count_stack_size(nodes, edges, graph_head)
+    db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id)
 
     if cycle_count > 0:
-        cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges, row_id)
-        create_graph(cycle_nodes_list, cycle_edges, row_id)
-        mapping_to_sourcecode(cycle_nodes_list, row_id)
+        cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
+        g = create_graph(cycle_nodes_list, cycle_edges, row_id)
+        src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
+        db.update_cycle_info_to_db(row_id, g, src_text, op_text)
 
     return ana_result
 
@@ -83,6 +84,7 @@ def code_preproc(filename):
     f_op = os.path.join(os.path.dirname(__file__), 'opcode')
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
     f_src = os.path.join(os.path.dirname(__file__), filename)
+    op_text = ''
 
     w = open(f_op, 'w')
     w2 = open(f_op_tmp, 'w')
@@ -103,24 +105,30 @@ def code_preproc(filename):
                         continue
                     else:
                         if is_tag:
-                            w.write(new_line[4].rstrip().strip() + ' '
-                                    + new_line[5].rstrip().strip() + '\n')
+                            text = new_line[4].rstrip().strip() + ' ' \
+                                   + new_line[5].rstrip().strip() + '\n'
+                            w.write(text)
+                            op_text += text
                             for l in range(4, len(new_line)):
                                 w2.write(new_line[l].rstrip().strip() + ' ')
                             w2.write('\n')
                         elif new_line[6] != '':
-                            w.write(new_line[6].rstrip().strip() + ' '
-                                    + new_line[7].rstrip().strip() + ' '
-                                    + new_line[8].rstrip().strip() + '\n')
+                            text = new_line[6].rstrip().strip() + ' ' \
+                                   + new_line[7].rstrip().strip() + ' ' \
+                                   + new_line[8].rstrip().strip() + '\n'
+                            w.write(text)
+                            op_text += text
                             for l in range(6, len(new_line)):
                                 w2.write(new_line[l].rstrip().strip() + ' ')
                             w2.write('\n')
     w.close()
     w2.close()
 
+    return op_text
+
 
 def init_graph(nodes, edges):
-    print('\t>>> Initiating Control Flow Graph')
+    print('\t>> Initiating Control Flow Graph')
 
     stack_push_one = ['PUSH', 'DUP', 'CALLER', 'CALLVALUE', 'GAS', 'CALLDATASIZE', 'PC', 'MSIZE',
                       'COINBASE', 'GASLIMIT', 'DIFFICULTY', 'TIMESTAMP', 'NUMBER', 'CODESIZE', 'GASPRICE', 'ADDRESS',
@@ -212,7 +220,7 @@ def init_graph(nodes, edges):
 
                 if prev_instruction.strip().split(' ')[0] == 'PUSH' and not func_out:
                     nodes.append((stack_header,
-                                  {'label': str(idx) + ' ' + line,
+                                  {'label': str(idx) + ' ' + line.rstrip(),
                                    'id': '-1'}))
                     tag_number = int(prev_instruction.split(' ')[2])
                     jump_from = str(stack_header)
@@ -283,14 +291,14 @@ def init_graph(nodes, edges):
             one_before_header = str(stack_header)
             stack_header = str(idx)
             nodes.append((stack_header,
-                          {'label': str(idx) + ' ' + line,
+                          {'label': str(idx) + ' ' + line.strip(),
                            'id': '-1'}))
             edges.append(((one_before_header, stack_header),
                           {'label': str(idx) + ' ' + instruction + ' ' + stack_size,
                            'color': edge_color,
                            'id': str(stack_size)}))
             prev_instruction = line
-    print('\t\t<<< Control Flow Graph Constructed')
+    print('\t [Control Flow Graph Constructed]')
 
     node_list = []
     edge_list = []
@@ -302,7 +310,7 @@ def init_graph(nodes, edges):
         edge_idx = e[0][1]
         edge_list.append(edge_idx)
 
-    print('\t--- {} nodes, {} edges'.format(len(node_list), len(edge_list)))
+    print('\t-- {} nodes, {} edges --'.format(len(node_list), len(edge_list)))
 
     return node_list, edge_list
 
@@ -314,7 +322,7 @@ def find_graph_head(node_list, edge_list):
         if n not in edge_list:
             head_list.append((n, idx))
 
-    print('\t--- Total {} graph(s) constructed'.format(len(head_list)))
+    print('\t-- Total {} graph(s) constructed --'.format(len(head_list)))
 
     return head_list
 
@@ -330,7 +338,7 @@ def count_stack_size(nodes, edges, graph_head):
         start_node_idx = start_node[1]
         queue.append(nodes[start_node_idx])
 
-    print('\t>>> Checking CFG ', end='')
+    print('\t>> Checking CFG ', end='')
 
     while len(queue):
         if count % 1000 == 0:
@@ -375,12 +383,12 @@ def count_stack_size(nodes, edges, graph_head):
                                 queue.appendleft(n)
                                 break
         # print('queue = ', queue)
-    print('\n\t\t<<< Done, Found {} cycle(s) from assembly code'.format(cycle_count))
+    print('\n\t [Done, Found {} cycle(s) from assembly code]'.format(cycle_count))
 
     return check_result, cycle_nodes, cycle_count
 
 
-def cycle_graph(cycle_nodes, nodes, edges, row_id):
+def cycle_graph(cycle_nodes, nodes, edges):
     cycle_nodes_list = []
     cycle_edges = []
 
@@ -419,9 +427,12 @@ def cycle_graph(cycle_nodes, nodes, edges, row_id):
 
 
 def mapping_to_sourcecode(cycle_nodes, row_id):
-    print('\t>>> Mapping cycle node to source code')
+    print('\t>> Mapping cycle node to source code')
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
     f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
+    last_line = ''
+    src_text = ''
+    opcode_text = ''
 
     w = open(f_src_tmp, 'w')
 
@@ -430,20 +441,30 @@ def mapping_to_sourcecode(cycle_nodes, row_id):
             for n in cycle_nodes:
                 n_label = n[1].get('label').rstrip().split(' ')
                 if int(n_label[0]) == idx:
-                    src = line.rstrip().split('  ')
-                    w.write(src[-1].strip() + '\n')
+                    src = line.rstrip().split('  ')[-1].strip()
+                    src = src.replace('...', '') + '\n'
+                    op = line.rstrip().split('  ')[0]
+                    opcode_text += op
+                    if last_line != src:
+                        w.write(src)
+                        src_text += src
+                        last_line = src
                     break
     w.close()
-    print('\t\t<<< Finishing mapping')
+    print('\t [Finishing mapping]')
+
+    return src_text, opcode_text
 
 
 def create_graph(n, e, row_id):
-    print('\t>>> Visualizing graph')
+    print('\t>> Visualizing graph')
     digraph = functools.partial(gv.Digraph, format='svg')
-    g1 = add_edges(add_nodes(digraph(), n), e)
-    filename = 'img/{}/g{}'.format(row_id, row_id)
-    g1.render(filename=filename)
-    print('\t\t<<< Visualize graph constructed')
+    g = add_edges(add_nodes(digraph(), n), e)
+    # filename = 'img/{}/g{}'.format(row_id, row_id)
+    # g.render(filename=filename)
+    print('\t [Visualize graph constructed]')
+
+    return g
 
 
 def add_nodes(graph, nodes):

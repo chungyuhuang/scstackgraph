@@ -15,8 +15,8 @@ def main():
     parser.add_argument("-op", "--op", help="generate runtime opcode", action='store_true')
     args = parser.parse_args()
 
-    # chrome_path = "/Users/soslab/Downloads/chromedriver"
-    chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
+    chrome_path = "/Users/soslab/Downloads/chromedriver"
+    # chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
 
     if args.asm:
         web = webdriver.Chrome(chrome_path)
@@ -48,12 +48,12 @@ def main():
                 runtime_op = web2.find_element_by_class_name('col-md-10').text
                 position = runtime_op.index('Decoded Bytecode :')
                 web2.close()
-                db.update_crawling_to_db(args, conn, row_id, runtime_op[position + 20:len(runtime_op)])
+                db.update_crawling_to_db(conn, row_id, runtime_op[position + 20:len(runtime_op)])
         elif args.asm:
             pyperclip.copy(code)
             copy_assembly_code()
-            time.sleep(50)
-            db.update_crawling_to_db(args, conn, row_id, code)
+            time.sleep(55)
+            db.update_crawling_to_db(conn, row_id, code)
         else:
             print('Must use an argument, -asm for assembly, -r for runtime binary.')
             sys.exit(0)

@@ -18,7 +18,7 @@ def total_contract_count():
     cur = conn.cursor()
 
     try:
-        cur.execute('SELECT COUNT(*) FROM contract;')
+        cur.execute('SELECT COUNT(*) FROM contract WHERE checksame = 0;')
         num = cur.fetchall()[0][0]
         print('--- Number(s) of downloaded contract from Etherscan: {} ---'.format(num))
     except Exception as ex:
@@ -38,11 +38,11 @@ def ready_contract_count(db_column, db_status):
         cur.execute('''
         SELECT COUNT(*)
         FROM contract
-        WHERE {} <> '' AND status = '{}';'''.format(db_column, db_status))
+        WHERE {} <> '' AND status = '{}' AND checksame = 0;'''.format(db_column, db_status))
         num = cur.fetchall()[0][0]
-        print(' ---> {} contract(s) waiting for analysis ---'.format(num))
+        print('---> {} contract(s) waiting for analysis ---'.format(num))
     except Exception as ex:
-        print(' --- Failed to count ready contract numbers from database. ---')
+        print('--- Failed to count ready contract numbers from database. ---')
         print('Error: ', ex)
         sys.exit(0)
 
@@ -55,7 +55,7 @@ def load_source_code_from_db():
 
     try:
         cur.execute('''SELECT id, sourcecode FROM contract
-        WHERE sourcecode <> '' AND status = 'PENDING' ORDER BY id;''')
+        WHERE sourcecode <> '' AND status = 'PENDING' AND checksame = 0 ORDER BY id;''')
     except Exception as ex:
         print('--- Failed to select source code from database. ---')
         print('Error: ', ex)
@@ -70,15 +70,15 @@ def load_assembly_from_db(db_column, db_status):
     cur = conn.cursor()
 
     try:
-        print(' --- Querying contract assembly code from DB ---')
+        print('--- Querying contract assembly code from DB ---')
         cur.execute('''
         SELECT id, address, {}
         FROM contract
-        WHERE {} <> '' AND status = '{}'
+        WHERE {} <> '' AND status = '{}' AND checksame = 0
         ORDER BY id;
         '''.format(db_column, db_column, db_status))
     except Exception as ex:
-        print(' --- Failed to select source code from database. ---')
+        print('--- Failed to select source code from database. ---')
         print('Error: ', ex)
         sys.exit(0)
 
@@ -90,66 +90,86 @@ def update_analysis_result_to_db(db_status, result, row_id):
     cur = conn.cursor()
 
     try:
-        print(' --- Updating contract analysis result to DB, id: {} ---'.format(row_id))
+        print('\t--- Updating contract analysis result to DB, id: {} ---'.format(row_id))
         cur.execute('''
         UPDATE contract
-        SET status = '{}'
+        SET status = '{}', analysis_result = '{}'
         WHERE id='{}';
-        '''.format(db_status, row_id))
+        '''.format(db_status, result, row_id))
         conn.commit()
-        cur.execute('''
-        UPDATE contract
-        SET analysis_result = '{}'
-        WHERE id='{}';
-        '''.format(result, row_id))
-        conn.commit()
+        if result:
+            print('\t--- Updating cycle information to DB, id: {} ---'.format(row_id))
+            cur.execute('''
+                    INSERT INTO cycle_contract (contract_id)
+                    VALUES ('{}');
+                    '''.format(row_id))
+            conn.commit()
     except Exception as ex:
-        print(' --- Failed to update result to database. ---')
+        print('\t--- Failed to update result to database. ---')
         print('Error: ', ex)
         sys.exit(0)
 
 
-def update_crawling_to_db(args, conn, row_id, input_code):
+def update_crawling_to_db(conn, row_id, input_code):
     code_origin = pyperclip.paste()
-    assembly_code = code_origin.replace("'", " ")
+    assembly_code = code_origin.replace("'", "''")
 
     cur = conn.cursor()
 
-    if args.op:
+    if code_origin == input_code:
         try:
-            input_code = input_code.replace("'", "")
-            cur.execute('''
-                UPDATE contract
-                SET runtime_opcode='{}'
-                WHERE id='{}';
-                '''.format(input_code,
-                           row_id))
+            cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('COMPILE_ERROR',
+                                                                                    row_id))
             conn.commit()
-            print('--- Update runtime binary to database. ---')
+            print('''\t--- Update id {} status '{}' to database. ---'''.format(row_id, 'COMPILE_ERROR'))
         except Exception as ex:
-            print('--- Failed to update runtime binary to database. ---')
+            print('\t--- Failed to update to database. ---')
             print('Error: ', ex)
+            sys.exit(0)
     else:
-        if code_origin == input_code:
-            try:
-                cur.execute('''UPDATE contract SET status='{}' WHERE id='{}';'''.format('COMPILE_ERROR',
-                                                                                        row_id))
-                conn.commit()
-                print('''--- Update id {} status '{}' to database. ---'''.format(row_id, 'COMPILE_ERROR'))
-            except Exception as ex:
-                print('--- Failed to update to database. ---')
-                print('Error: ', ex)
-        else:
-            try:
-                cur.execute('''
-                UPDATE contract
-                SET assembly='{}', status='{}'
-                WHERE id='{}';
-                '''.format(assembly_code,
-                           'GOT_ASSEMBLY',
-                           row_id))
-                conn.commit()
-                print('--- Update id {} assembly to database. ---'.format(row_id))
-            except Exception as ex:
-                print('--- Failed to update assembly code to database. ---')
-                print('Error: ', ex)
+        try:
+            cur.execute('''
+            UPDATE contract
+            SET assembly='{}', status='{}'
+            WHERE id='{}';
+            '''.format(assembly_code,
+                       'GOT_ASSEMBLY',
+                       row_id))
+            conn.commit()
+            print('\t--- Update id {} assembly to database. ---'.format(row_id))
+        except Exception as ex:
+            print('\t--- Failed to update assembly code to database. ---')
+            print('Error: ', ex)
+            sys.exit(0)
+
+
+def update_opcode_to_db(input_code, row_id):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute('''UPDATE contract SET runtime_opcode='{}' WHERE id='{}';'''.format(input_code, row_id))
+        conn.commit()
+        print('\t--- Update runtime opcode to database. ---')
+    except Exception as ex:
+        print('\t--- Failed to update runtime opcode to database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+
+def update_cycle_info_to_db(row_id, cycle_cfg, cycle_code, cycle_opcode):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        print('\t--- Updating cycle info to DB, id: {} ---'.format(row_id))
+        cur.execute('''
+        UPDATE cycle_contract
+        SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}'
+        WHERE contract_id = '{}';
+        '''.format(cycle_cfg, cycle_code, cycle_opcode, row_id))
+        conn.commit()
+    except Exception as ex:
+        print('\t--- Failed to update result to database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
