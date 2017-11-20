@@ -460,8 +460,8 @@ def create_graph(n, e, row_id):
     print('\t>> Visualizing graph')
     digraph = functools.partial(gv.Digraph, format='svg')
     g = add_edges(add_nodes(digraph(), n), e)
-    # filename = 'img/{}/g{}'.format(row_id, row_id)
-    # g.render(filename=filename)
+    filename = 'img/{}/g{}'.format(row_id, row_id)
+    g.render(filename=filename)
     print('\t [Visualize graph constructed]')
 
     return g

@@ -118,5 +118,5 @@ opcode_new
 opcode_tmp
 sourcecode
 contract.sol
-/img/*
 src_mapping.py
+/img
