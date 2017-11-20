@@ -157,7 +157,7 @@ def update_opcode_to_db(input_code, row_id):
         sys.exit(0)
 
 
-def update_cycle_info_to_db(row_id, cycle_cfg, cycle_code, cycle_opcode):
+def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count):
     conn = connect_to_db()
     cur = conn.cursor()
 
@@ -165,9 +165,10 @@ def update_cycle_info_to_db(row_id, cycle_cfg, cycle_code, cycle_opcode):
         print('\t--- Updating cycle info to DB, id: {} ---'.format(row_id))
         cur.execute('''
         UPDATE cycle_contract
-        SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}'
+        SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}',
+         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}
         WHERE contract_id = '{}';
-        '''.format(cycle_cfg, cycle_code, cycle_opcode, row_id))
+        '''.format(cfg, code, opcode, graph, node, edge, count, row_id))
         conn.commit()
     except Exception as ex:
         print('\t--- Failed to update result to database. ---')

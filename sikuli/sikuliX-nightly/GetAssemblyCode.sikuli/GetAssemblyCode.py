@@ -3,7 +3,7 @@ click("1508417628938.png")
 click("1510076664358.png")
 sleep(1)
 type("v", KEY_CMD)
-sleep(9)
+sleep(14)
 click("1508420687346.png")
 if exists("1508420854131.png"):
     click("1508948017257.png")

@@ -15,8 +15,8 @@ def main():
     parser.add_argument("-op", "--op", help="generate runtime opcode", action='store_true')
     args = parser.parse_args()
 
-    chrome_path = "/Users/soslab/Downloads/chromedriver"
-    # chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
+    # chrome_path = "/Users/soslab/Downloads/chromedriver"
+    chrome_path = "/Users/PeterHuang/Downloads/chromedriver"
 
     if args.asm:
         web = webdriver.Chrome(chrome_path)

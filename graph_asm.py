@@ -58,7 +58,6 @@ def main():
 def asm_analysis(row_id=0):
     filename = 'sourcecode'
     op = code_preproc(filename)
-    print(op)
     db.update_opcode_to_db(op, row_id)
 
     nodes = []
@@ -75,7 +74,8 @@ def asm_analysis(row_id=0):
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
-        db.update_cycle_info_to_db(row_id, g, src_text, op_text)
+        cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count]
+        db.update_cycle_info_to_db(row_id, *cycle_info)
 
     return ana_result
 
@@ -443,7 +443,7 @@ def mapping_to_sourcecode(cycle_nodes, row_id):
                 if int(n_label[0]) == idx:
                     src = line.rstrip().split('  ')[-1].strip()
                     src = src.replace('...', '') + '\n'
-                    op = line.rstrip().split('  ')[0]
+                    op = line.rstrip().split('  ')[0] + '\n'
                     opcode_text += op
                     if last_line != src:
                         w.write(src)
