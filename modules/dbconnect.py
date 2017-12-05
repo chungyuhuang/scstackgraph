@@ -85,6 +85,21 @@ def load_assembly_from_db(db_column, db_status):
     return cur
 
 
+def load_cycle_contract_from_db():
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        print('--- Querying cycle contract from DB ---')
+        cur.execute('SELECT * FROM cycle_contract ORDER BY id;')
+    except Exception as ex:
+        print('--- Failed to select cycle contract from database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+    return cur
+
+
 def update_analysis_result_to_db(db_status, result, row_id):
     conn = connect_to_db()
     cur = conn.cursor()
@@ -157,7 +172,7 @@ def update_opcode_to_db(input_code, row_id):
         sys.exit(0)
 
 
-def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count):
+def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count, op_with_src):
     conn = connect_to_db()
     cur = conn.cursor()
 
@@ -166,9 +181,24 @@ def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count)
         cur.execute('''
         UPDATE cycle_contract
         SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}',
-         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}
+         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}, contract_assembly = {}
         WHERE contract_id = '{}';
-        '''.format(cfg, code, opcode, graph, node, edge, count, row_id))
+        '''.format(cfg, code, opcode, graph, node, edge, count, op_with_src, row_id))
+        conn.commit()
+    except Exception as ex:
+        print('\t--- Failed to update result to database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+
+def update_condition_info_to_db(row_id, num, var):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        print('\t--- Updating condition info to DB, id: {} ---'.format(row_id))
+        cur.execute('''INSERT INTO contract_condition_node(contract_id, node)
+        VALUES('{}', {});'''.format(row_id, (num, var)))
         conn.commit()
     except Exception as ex:
         print('\t--- Failed to update result to database. ---')

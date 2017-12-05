@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--i", help="input file name")
     parser.add_argument("-f", "--f", help="read from DB", action='store_true')
+    parser.add_argument("-t", "--t", help="testing", action='store_true')
     args = parser.parse_args()
 
     if args.f:
@@ -50,14 +51,16 @@ def main():
             print(' ---> Positive Cycle Found: [Yes]')
         else:
             print(' ---> Positive Cycle Found: [No]')
+    elif args.t:
+        asm_analysis()
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
-        sys.exit(0)
+    #     sys.exit(0)
 
 
-def asm_analysis(row_id=0):
+def asm_analysis(row_id=0, contract_id=0, ccc=0):
     filename = 'sourcecode'
-    op = code_preproc(filename)
+    op, op_with_src = code_preproc(filename)
     db.update_opcode_to_db(op, row_id)
 
     nodes = []
@@ -71,10 +74,13 @@ def asm_analysis(row_id=0):
     db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id)
 
     if cycle_count > 0:
+        condition_node = trace_condition(cycle_nodes)
+        for n in condition_node:
+            db.update_condition_info_to_db(contract_id, *n)
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
-        cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count]
+        cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count, op_with_src]
         db.update_cycle_info_to_db(row_id, *cycle_info)
 
     return ana_result
@@ -85,6 +91,7 @@ def code_preproc(filename):
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
     f_src = os.path.join(os.path.dirname(__file__), filename)
     op_text = ''
+    op_with_src_text = ''
 
     w = open(f_op, 'w')
     w2 = open(f_op_tmp, 'w')
@@ -111,7 +118,9 @@ def code_preproc(filename):
                             op_text += text
                             for l in range(4, len(new_line)):
                                 w2.write(new_line[l].rstrip().strip() + ' ')
+                                op_with_src_text += new_line[l].rstrip().strip() + ' '
                             w2.write('\n')
+                            op_with_src_text += '\n'
                         elif new_line[6] != '':
                             text = new_line[6].rstrip().strip() + ' ' \
                                    + new_line[7].rstrip().strip() + ' ' \
@@ -120,11 +129,13 @@ def code_preproc(filename):
                             op_text += text
                             for l in range(6, len(new_line)):
                                 w2.write(new_line[l].rstrip().strip() + ' ')
+                                op_with_src_text += new_line[l].rstrip().strip() + ' '
                             w2.write('\n')
+                            op_with_src_text += '\n'
     w.close()
     w2.close()
 
-    return op_text
+    return op_text, op_with_src_text
 
 
 def init_graph(nodes, edges):
@@ -373,7 +384,8 @@ def count_stack_size(nodes, edges, graph_head):
                                     and 'JUMP' in father_node[1].get('label')\
                                     and father_node[1].get('label').rstrip().split()[1] != 'JUMPDEST':
                                 if int(f_idx) > int(n_label_idx[0]):
-                                    cycle_nodes.append((father_node, n))
+                                    increase_amount = int(f_id) - int(c_id)
+                                    cycle_nodes.append((father_node, n, increase_amount))
                                     cycle_count += 1
                                     check_result = 1
                                     child_node_info['id'] = str(int(f_id) + int(edge_weight))
@@ -429,31 +441,56 @@ def cycle_graph(cycle_nodes, nodes, edges):
 def mapping_to_sourcecode(cycle_nodes, row_id):
     print('\t>> Mapping cycle node to source code')
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
-    f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
+    # f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
+    f_tmp = os.path.join(os.path.dirname(__file__), 'tmp')
     last_line = ''
     src_text = ''
     opcode_text = ''
 
-    w = open(f_src_tmp, 'w')
+    # w = open(f_src_tmp, 'w')
+    w2 = open(f_tmp, 'w')
 
     with open(f_op_tmp, 'r') as f:
         for idx, line in enumerate(f):
             for n in cycle_nodes:
                 n_label = n[1].get('label').rstrip().split(' ')
                 if int(n_label[0]) == idx:
+                    w2.write(line)
                     src = line.rstrip().split('  ')[-1].strip()
                     src = src.replace('...', '') + '\n'
                     op = line.rstrip().split('  ')[0] + '\n'
                     opcode_text += op
                     if last_line != src:
-                        w.write(src)
+                        # w.write(src)
                         src_text += src
                         last_line = src
                     break
-    w.close()
+    # w.close()
+    w2.close()
     print('\t [Finishing mapping]')
 
     return src_text, opcode_text
+
+
+def trace_condition(cycle_node):
+    print('\t>> Trace condition from opcode')
+    f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
+    condition_node_list = []
+
+    for n in cycle_node:
+        start_node = n[1][1].get('label').split(' ')
+        increase_amount = n[2]
+        start = int(start_node[0])
+        with open(f_op_tmp, 'r') as f:
+            for idx, line in enumerate(f):
+                if idx == start:
+                    seg = line.split('    ')
+                    if seg[0] == 'MLOAD' or seg[0] == 'SLOAD':
+                        condition_var = seg[1].rstrip()
+                        condition_node_list.append([increase_amount, condition_var])
+                        break
+                    start += 1
+    return condition_node_list
 
 
 def create_graph(n, e, row_id):
