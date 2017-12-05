@@ -181,7 +181,7 @@ def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count,
         cur.execute('''
         UPDATE cycle_contract
         SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}',
-         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}, contract_assembly = {}
+         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}, contract_assembly = '{}'
         WHERE contract_id = '{}';
         '''.format(cfg, code, opcode, graph, node, edge, count, op_with_src, row_id))
         conn.commit()
