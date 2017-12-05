@@ -58,7 +58,7 @@ def main():
     #     sys.exit(0)
 
 
-def asm_analysis(row_id=0, contract_id=0, ccc=0):
+def asm_analysis(row_id=0):
     filename = 'sourcecode'
     op, op_with_src = code_preproc(filename)
     db.update_opcode_to_db(op, row_id)
@@ -76,7 +76,7 @@ def asm_analysis(row_id=0, contract_id=0, ccc=0):
     if cycle_count > 0:
         condition_node = trace_condition(cycle_nodes)
         for n in condition_node:
-            db.update_condition_info_to_db(contract_id, *n)
+            db.update_condition_info_to_db(row_id, *n)
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
