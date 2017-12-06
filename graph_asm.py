@@ -387,7 +387,6 @@ def count_stack_size(nodes, edges, graph_head):
                                     and 'JUMP [in]' not in father_node[1].get('label')\
                                     and father_node[1].get('label').rstrip().split()[1] != 'JUMPDEST':
                                 if int(f_idx) > int(n_label_idx[0]):
-                                    print(n, father_node)
                                     increase_amount = int(f_id) - int(c_id)
                                     cycle_nodes.append((father_node, n, increase_amount))
                                     cycle_count += 1
