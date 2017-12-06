@@ -52,37 +52,38 @@ def main():
         else:
             print(' ---> Positive Cycle Found: [No]')
     elif args.t:
-        asm_analysis()
+        asm_analysis(test_mode=1)
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
     #     sys.exit(0)
 
 
-def asm_analysis(row_id=0):
+def asm_analysis(row_id=0, test_mode=0):
     filename = 'sourcecode'
     op, op_with_src = code_preproc(filename)
-    db.update_opcode_to_db(op, row_id)
+    db.update_opcode_to_db(op, row_id, test_mode)
 
     nodes = []
     edges = []
 
     node_list, edge_list = init_graph(nodes, edges)
+    # print(node_list, edge_list)
     # list with all the nodes without input edge
     graph_head = find_graph_head(node_list, edge_list)
 
     ana_result, cycle_nodes, cycle_count = count_stack_size(nodes, edges, graph_head)
-    db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id)
+    db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id, test_mode)
 
     if cycle_count > 0:
         condition_node = trace_condition(cycle_nodes)
         for n in condition_node:
-            db.update_condition_info_to_db(row_id, *n)
+            db.update_condition_info_to_db(row_id, test_mode, *n)
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
         op_with_src = op_with_src.replace("'", "''")
         cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count, op_with_src]
-        db.update_cycle_info_to_db(row_id, *cycle_info)
+        db.update_cycle_info_to_db(row_id, test_mode, *cycle_info)
 
     return ana_result
 
@@ -383,8 +384,10 @@ def count_stack_size(nodes, edges, graph_head):
                             if int(c_id) > 0 \
                                     and int(child_idx) > 100000 \
                                     and 'JUMP' in father_node[1].get('label')\
+                                    and 'JUMP [in]' not in father_node[1].get('label')\
                                     and father_node[1].get('label').rstrip().split()[1] != 'JUMPDEST':
                                 if int(f_idx) > int(n_label_idx[0]):
+                                    print(n, father_node)
                                     increase_amount = int(f_id) - int(c_id)
                                     cycle_nodes.append((father_node, n, increase_amount))
                                     cycle_count += 1

@@ -100,29 +100,30 @@ def load_cycle_contract_from_db():
     return cur
 
 
-def update_analysis_result_to_db(db_status, result, row_id):
-    conn = connect_to_db()
-    cur = conn.cursor()
+def update_analysis_result_to_db(db_status, result, row_id, test_mode):
+    if not test_mode:
+        conn = connect_to_db()
+        cur = conn.cursor()
 
-    try:
-        print('\t--- Updating contract analysis result to DB, id: {} ---'.format(row_id))
-        cur.execute('''
-        UPDATE contract
-        SET status = '{}', analysis_result = '{}'
-        WHERE id='{}';
-        '''.format(db_status, result, row_id))
-        conn.commit()
-        if result:
-            print('\t--- Updating cycle information to DB, id: {} ---'.format(row_id))
+        try:
+            print('\t--- Updating contract analysis result to DB, id: {} ---'.format(row_id))
             cur.execute('''
-                    INSERT INTO cycle_contract (contract_id)
-                    VALUES ('{}');
-                    '''.format(row_id))
+                UPDATE contract
+                SET status = '{}', analysis_result = '{}'
+                WHERE id='{}';
+                '''.format(db_status, result, row_id))
             conn.commit()
-    except Exception as ex:
-        print('\t--- Failed to update result to database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
+            if result:
+                print('\t--- Updating cycle information to DB, id: {} ---'.format(row_id))
+                cur.execute('''
+                            INSERT INTO cycle_contract (contract_id)
+                            VALUES ('{}');
+                            '''.format(row_id))
+                conn.commit()
+        except Exception as ex:
+            print('\t--- Failed to update result to database. ---')
+            print('Error: ', ex)
+            sys.exit(0)
 
 
 def update_crawling_to_db(conn, row_id, input_code):
@@ -158,49 +159,52 @@ def update_crawling_to_db(conn, row_id, input_code):
             sys.exit(0)
 
 
-def update_opcode_to_db(input_code, row_id):
-    conn = connect_to_db()
-    cur = conn.cursor()
+def update_opcode_to_db(input_code, row_id, test_mode):
+    if not test_mode:
+        conn = connect_to_db()
+        cur = conn.cursor()
 
-    try:
-        cur.execute('''UPDATE contract SET runtime_opcode='{}' WHERE id='{}';'''.format(input_code, row_id))
-        conn.commit()
-        print('\t--- Update runtime opcode to database. ---')
-    except Exception as ex:
-        print('\t--- Failed to update runtime opcode to database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
-
-
-def update_cycle_info_to_db(row_id, cfg, code, opcode, graph, node, edge, count, op_with_src):
-    conn = connect_to_db()
-    cur = conn.cursor()
-
-    try:
-        print('\t--- Updating cycle info to DB, id: {} ---'.format(row_id))
-        cur.execute('''
-        UPDATE cycle_contract
-        SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}',
-         cycle_graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}, contract_assembly = '{}'
-        WHERE contract_id = '{}';
-        '''.format(cfg, code, opcode, graph, node, edge, count, op_with_src, row_id))
-        conn.commit()
-    except Exception as ex:
-        print('\t--- Failed to update result to database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
+        try:
+            cur.execute('''UPDATE contract SET runtime_opcode='{}' WHERE id='{}';'''.format(input_code, row_id))
+            conn.commit()
+            print('\t--- Update runtime opcode to database. ---')
+        except Exception as ex:
+            print('\t--- Failed to update runtime opcode to database. ---')
+            print('Error: ', ex)
+            sys.exit(0)
 
 
-def update_condition_info_to_db(row_id, num, var):
-    conn = connect_to_db()
-    cur = conn.cursor()
+def update_cycle_info_to_db(row_id, test_mode, cfg, code, opcode, graph, node, edge, count, op_with_src):
+    if not test_mode:
+        conn = connect_to_db()
+        cur = conn.cursor()
 
-    try:
-        print('\t--- Updating condition info to DB, id: {} ---'.format(row_id))
-        cur.execute('''INSERT INTO contract_condition_node(contract_id, node)
-        VALUES('{}', {});'''.format(row_id, (num, var)))
-        conn.commit()
-    except Exception as ex:
-        print('\t--- Failed to update result to database. ---')
-        print('Error: ', ex)
-        sys.exit(0)
+        try:
+            print('\t--- Updating cycle info to DB, id: {} ---'.format(row_id))
+            cur.execute('''
+                UPDATE cycle_contract
+                SET cycle_cfg = '{}', cycle_code = '{}', cycle_opcode = '{}',
+                 graph_count = {}, cycle_node_count = {}, cycle_edge_count = {}, cycle_count = {}, contract_assembly = '{}'
+                WHERE contract_id = '{}';
+                '''.format(cfg, code, opcode, graph, node, edge, count, op_with_src, row_id))
+            conn.commit()
+        except Exception as ex:
+            print('\t--- Failed to update result to database. ---')
+            print('Error: ', ex)
+            sys.exit(0)
+
+
+def update_condition_info_to_db(row_id, test_mode, num, var):
+    if not test_mode:
+        conn = connect_to_db()
+        cur = conn.cursor()
+
+        try:
+            print('\t--- Updating condition info to DB, id: {} ---'.format(row_id))
+            cur.execute('''INSERT INTO contract_condition_node(contract_id, node)
+                VALUES('{}', {});'''.format(row_id, (num, var)))
+            conn.commit()
+        except Exception as ex:
+            print('\t--- Failed to update result to database. ---')
+            print('Error: ', ex)
+            sys.exit(0)
