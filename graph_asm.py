@@ -80,6 +80,7 @@ def asm_analysis(row_id=0):
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
+        op_with_src = op_with_src.replace("'", "''")
         cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count, op_with_src]
         db.update_cycle_info_to_db(row_id, *cycle_info)
 
