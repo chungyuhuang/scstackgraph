@@ -6,7 +6,7 @@ type("v", KEY_CMD)
 sleep(14)
 click("1508420687346.png")
 if exists("1508420854131.png"):
-    click("1508948017257.png")
+    click("1508420854131.png")
     type(Key.DOWN, KeyModifier.CMD)
     e1 = exists("1509354940989.png")
     if e1:

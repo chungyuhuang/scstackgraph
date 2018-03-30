@@ -1,5 +1,6 @@
 from collections import deque
 from modules import dbconnect as db
+from gas_price import *
 import sys
 import graphviz as gv
 import functools
@@ -7,11 +8,12 @@ import argparse
 import re
 import time
 import os
+import math
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--i", help="input file name")
+    parser.add_argument("-i", "--i", help="input file name", action='store_true')
     parser.add_argument("-f", "--f", help="read from DB", action='store_true')
     parser.add_argument("-t", "--t", help="testing", action='store_true')
     args = parser.parse_args()
@@ -44,9 +46,30 @@ def main():
             else:
                 print(' ---> Positive Cycle Found: [No] {}'.format(result))
     elif args.i:
-        filename = args.i
-        code_preproc(filename)
-        result = asm_analysis()
+        # filename = args.i
+        # code_preproc(filename)
+        # db.ready_contract_count('assembly', 'CFG_CONSTRUCTED')
+        cur = db.load_assembly_from_db('assembly', 'CFG_CONSTRUCTED')
+        for i in cur:
+            row_id = i[0]
+            contract_addr = i[1]
+            print('\n ---> Analyzing contract id {}'.format(row_id))
+            assembly_code = i[2]
+
+            filename = 'sourcecode'
+            w = open(filename, 'w')
+            w.write(assembly_code)
+            w.close()
+
+            start_time = time.time()
+            print('\t---> Start checking contract {}'.format(contract_addr))
+            result = asm_analysis(row_id)
+
+            duration = time.time() - start_time
+            m, s = divmod(duration, 60)
+            h, m = divmod(m, 60)
+            print('\t [Time using: {:2.0f}h{:2.0f}m{:2.0f}s]'.format(h, m, s))
+
         if result:
             print(' ---> Positive Cycle Found: [Yes]')
         else:
@@ -66,24 +89,26 @@ def asm_analysis(row_id=0, test_mode=0):
     nodes = []
     edges = []
 
-    node_list, edge_list = init_graph(nodes, edges)
-    # print(node_list, edge_list)
-    # list with all the nodes without input edge
+    node_list, edge_list, gas_total = init_graph(nodes, edges)
+    print(gas_total)
+    # g = create_graph(nodes, edges, row_id)
+    # # list with all the nodes without input edge
     graph_head = find_graph_head(node_list, edge_list)
-
+    #
     ana_result, cycle_nodes, cycle_count = count_stack_size(nodes, edges, graph_head)
-    db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id, test_mode)
-
+    # db.update_analysis_result_to_db('CFG_CONSTRUCTED', ana_result, row_id, test_mode)
+    #
     if cycle_count > 0:
         condition_node = trace_condition(cycle_nodes)
-        for n in condition_node:
-            db.update_condition_info_to_db(row_id, test_mode, *n)
         cycle_nodes_list, cycle_edges = cycle_graph(cycle_nodes, nodes, edges)
         g = create_graph(cycle_nodes_list, cycle_edges, row_id)
         src_text, op_text = mapping_to_sourcecode(cycle_nodes_list, row_id)
-        op_with_src = op_with_src.replace("'", "''")
-        cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count, op_with_src]
-        db.update_cycle_info_to_db(row_id, test_mode, *cycle_info)
+        gas_total = cal_loop_gas()
+        for n in condition_node:
+            db.update_condition_info_to_db(row_id, test_mode, gas_total, *n)
+        # op_with_src = op_with_src.replace("'", "''")
+        # cycle_info = [g, src_text, op_text, len(graph_head), len(node_list), len(edge_list), cycle_count, op_with_src]
+        # db.update_cycle_info_to_db(row_id, test_mode, *cycle_info)
 
     return ana_result
 
@@ -141,7 +166,7 @@ def code_preproc(filename):
 
 
 def init_graph(nodes, edges):
-    print('\t>> Initiating Control Flow Graph')
+    print('==> Initiating Control Flow Graph')
 
     stack_push_one = ['PUSH', 'DUP', 'CALLER', 'CALLVALUE', 'GAS', 'CALLDATASIZE', 'PC', 'MSIZE',
                       'COINBASE', 'GASLIMIT', 'DIFFICULTY', 'TIMESTAMP', 'NUMBER', 'CODESIZE', 'GASPRICE', 'ADDRESS',
@@ -153,10 +178,15 @@ def init_graph(nodes, edges):
     stack_unchange = ['SWAP', 'MLOAD', 'SLOAD', 'NOT', 'ISZERO', 'CALLDATALOAD', 'EXTCODESIZE', 'STOP', 'INVALID',
                       'BALANCE', 'BLOCKHASH']
 
+    opcode_list = []
+    opcode_with_formula = ['EXP', 'SHA3', 'CALLDATACOPY', 'CODECOPY', 'EXTCODECOPY', 'SSTORE', 'CALL', 'CALLCODE', 'DELEGATECALL'
+                           , 'SELFDESTRUCT', 'LOG0', 'LOG1', 'LOG2', 'LOG3', 'LOG4']
+
     stack_size = '0'
     stack_sum = 0
     edge_color = 'black'
     prev_instruction = '0'
+    gas_total = 0
 
     f_op = os.path.join(os.path.dirname(__file__), 'opcode')
 
@@ -174,7 +204,26 @@ def init_graph(nodes, edges):
                        }))
 
         for idx, line in enumerate(f):
+            # print(opcode_list)
             s = line.rstrip().split(' ')
+            opcode_list.append(s)
+            # print(opcode_list)
+
+            # if s[0] not in opcode_with_formula:
+                # print('sss=', s)
+            t = re.sub(r'\d+', '', str(s[0]))
+                # print('s[0]', t)
+            for g in gas_table:
+                if t == g:
+                    #print(g)
+                    #print(gas_table[g])
+                    #print(type(gas_table[g]))
+                    gas_total += gas_table[g]
+
+            # # print(gas_total)
+            #
+            # if s[0] == 'SSTORE':
+
             if 'LOG' not in s[0]:
                 instruction = re.sub(r'\d+', '', str(s[0]))
 
@@ -232,6 +281,8 @@ def init_graph(nodes, edges):
                                'id': stack_size}))
 
                 if prev_instruction.strip().split(' ')[0] == 'PUSH' and not func_out:
+                    #print(prev_instruction)
+                    #print(line)
                     nodes.append((stack_header,
                                   {'label': str(idx) + ' ' + line.rstrip(),
                                    'id': '-1'}))
@@ -311,7 +362,7 @@ def init_graph(nodes, edges):
                            'color': edge_color,
                            'id': str(stack_size)}))
             prev_instruction = line
-    print('\t [Control Flow Graph Constructed]')
+    print('\t[Control Flow Graph Constructed]')
 
     node_list = []
     edge_list = []
@@ -325,7 +376,7 @@ def init_graph(nodes, edges):
 
     print('\t-- {} nodes, {} edges --'.format(len(node_list), len(edge_list)))
 
-    return node_list, edge_list
+    return node_list, edge_list, gas_total
 
 
 def find_graph_head(node_list, edge_list):
@@ -351,7 +402,7 @@ def count_stack_size(nodes, edges, graph_head):
         start_node_idx = start_node[1]
         queue.append(nodes[start_node_idx])
 
-    print('\t>> Checking CFG ', end='')
+    print('==> Checking CFG ', end='')
 
     while len(queue):
         if count % 1000 == 0:
@@ -360,7 +411,6 @@ def count_stack_size(nodes, edges, graph_head):
 
         count += 1
         father_node = queue.popleft()
-        # print('\nfather node = ', father_node)
         f_idx = father_node[0]
         f_id = father_node[1].get('id')
 
@@ -371,14 +421,11 @@ def count_stack_size(nodes, edges, graph_head):
             edge_weight = e[1].get('id')
 
             if edge_from == f_idx:
-                # print('edge = ', e)
                 for n in nodes:
                     child_idx = n[0]
                     if edge_to == child_idx:
                         n_label_idx = n[1].get('label').split(' ')
-                        # print('child node = ', n)
                         c_id = n[1].get('id')
-                        # print(f_id, edge_weight, c_id)
                         if int(f_id) + int(edge_weight) > int(c_id):
                             child_node_info = n[1]
                             if int(c_id) > 0 \
@@ -397,8 +444,7 @@ def count_stack_size(nodes, edges, graph_head):
                                 child_node_info['id'] = str(int(f_id) + int(edge_weight))
                                 queue.appendleft(n)
                                 break
-        # print('queue = ', queue)
-    print('\n\t [Done, Found {} cycle(s) from assembly code]'.format(cycle_count))
+    print('\n\t[Done, Found {} cycle(s) from assembly code]'.format(cycle_count))
 
     return check_result, cycle_nodes, cycle_count
 
@@ -442,16 +488,19 @@ def cycle_graph(cycle_nodes, nodes, edges):
 
 
 def mapping_to_sourcecode(cycle_nodes, row_id):
-    print('\t>> Mapping cycle node to source code')
+    print('==> Mapping cycle node to source code')
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
-    # f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
+    #f_src_tmp = os.path.join(os.path.dirname(__file__), 'img/{}/cycle_src_{}.txt'.format(row_id, row_id))
     f_tmp = os.path.join(os.path.dirname(__file__), 'tmp')
+    f_op_gas = os.path.join(os.path.dirname(__file__), 'op_gas')
     last_line = ''
     src_text = ''
     opcode_text = ''
+    op_gas_text = ''
 
-    # w = open(f_src_tmp, 'w')
+    #w = open(f_src_tmp, 'w')
     w2 = open(f_tmp, 'w')
+    w3 = open(f_op_gas, 'w')
 
     with open(f_op_tmp, 'r') as f:
         for idx, line in enumerate(f):
@@ -462,7 +511,11 @@ def mapping_to_sourcecode(cycle_nodes, row_id):
                     src = line.rstrip().split('  ')[-1].strip()
                     src = src.replace('...', '') + '\n'
                     op = line.rstrip().split('  ')[0] + '\n'
+                    op_gas = line.rstrip().split('  ')[0]
+                    op_gas = re.sub(r'\d+', '', str(op_gas.split(' ')[0]))
                     opcode_text += op
+                    w3.write(op_gas + '\n')
+                    # op_gas_text += op_gas + '\n'
                     if last_line != src:
                         # w.write(src)
                         src_text += src
@@ -470,17 +523,20 @@ def mapping_to_sourcecode(cycle_nodes, row_id):
                     break
     # w.close()
     w2.close()
-    print('\t [Finishing mapping]')
+    w3.close()
+    print('\t[Finishing mapping]')
 
     return src_text, opcode_text
 
 
 def trace_condition(cycle_node):
-    print('\t>> Trace condition from opcode')
+    print('==> Trace condition from opcode')
+    # print(cycle_node)
     f_op_tmp = os.path.join(os.path.dirname(__file__), 'opcode_tmp')
     condition_node_list = []
 
     for n in cycle_node:
+        # print(n)
         start_node = n[1][1].get('label').split(' ')
         increase_amount = n[2]
         start = int(start_node[0])
@@ -493,16 +549,30 @@ def trace_condition(cycle_node):
                         condition_node_list.append([increase_amount, condition_var])
                         break
                     start += 1
+    # print(condition_node_list)
     return condition_node_list
 
 
+def cal_loop_gas():
+    gas_total = 0
+    f_op_gas = os.path.join(os.path.dirname(__file__), 'op_gas')
+    with open(f_op_gas, 'r') as f:
+        for idx, line in enumerate(f):
+            for g in gas_table:
+                if line.rstrip() == g:
+                    # print(gas_table[g])
+                    gas_total += gas_table[g]
+    print('==> loop gas = {} \n'.format(gas_total))
+    return gas_total
+
+
 def create_graph(n, e, row_id):
-    print('\t>> Visualizing graph')
+    print('==> Visualizing graph')
     digraph = functools.partial(gv.Digraph, format='svg')
     g = add_edges(add_nodes(digraph(), n), e)
     filename = 'img/{}/g{}'.format(row_id, row_id)
     g.render(filename=filename)
-    print('\t [Visualize graph constructed]')
+    print('\t[Visualize graph constructed]')
 
     return g
 
@@ -536,6 +606,11 @@ def apply_styles(graph, styles):
         ('edges' in styles and styles['edges']) or {}
     )
     return graph
+
+
+def opcode_ext(x, y):
+    ans = math.pow(x, y)
+    print(ans)
 
 
 if __name__ == '__main__':

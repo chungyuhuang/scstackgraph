@@ -38,7 +38,7 @@ def ready_contract_count(db_column, db_status):
         cur.execute('''
         SELECT COUNT(*)
         FROM contract
-        WHERE {} <> '' AND status = '{}' AND checksame = 0;'''.format(db_column, db_status))
+        WHERE {} <> '' AND status = '{}' AND checksame <> 0;'''.format(db_column, db_status))
         num = cur.fetchall()[0][0]
         print('---> {} contract(s) waiting for analysis ---'.format(num))
     except Exception as ex:
@@ -55,7 +55,7 @@ def load_source_code_from_db():
 
     try:
         cur.execute('''SELECT id, sourcecode FROM contract
-        WHERE sourcecode <> '' AND status = 'PENDING' AND checksame = 0 ORDER BY id;''')
+        WHERE sourcecode <> '' AND status = 'PENDING' AND checksame <> 0 ORDER BY id;''')
     except Exception as ex:
         print('--- Failed to select source code from database. ---')
         print('Error: ', ex)
@@ -75,6 +75,26 @@ def load_assembly_from_db(db_column, db_status):
         SELECT id, address, {}
         FROM contract
         WHERE {} <> '' AND status = '{}' AND checksame = 0
+        ORDER BY id;
+        '''.format(db_column, db_column, db_status))
+    except Exception as ex:
+        print('--- Failed to select source code from database. ---')
+        print('Error: ', ex)
+        sys.exit(0)
+
+    return cur
+
+
+def load_loop_contract(db_column, db_status):
+    conn = connect_to_db()
+    cur = conn.cursor()
+
+    try:
+        print('--- Querying contract assembly code from DB ---')
+        cur.execute('''
+        SELECT id, address, {}
+        FROM contract
+        WHERE {} <> '' AND status = '{}'
         ORDER BY id;
         '''.format(db_column, db_column, db_status))
     except Exception as ex:
@@ -194,15 +214,15 @@ def update_cycle_info_to_db(row_id, test_mode, cfg, code, opcode, graph, node, e
             sys.exit(0)
 
 
-def update_condition_info_to_db(row_id, test_mode, num, var):
+def update_condition_info_to_db(row_id, test_mode, gas_total, num, var):
     if not test_mode:
         conn = connect_to_db()
         cur = conn.cursor()
 
         try:
             print('\t--- Updating condition info to DB, id: {} ---'.format(row_id))
-            cur.execute('''INSERT INTO contract_condition_node(contract_id, node)
-                VALUES('{}', {});'''.format(row_id, (num, var)))
+            cur.execute('''INSERT INTO loop_gas_consume(contract_id, gas, node)
+                VALUES('{}', '{}', {});'''.format(row_id, gas_total, (num, var)))
             conn.commit()
         except Exception as ex:
             print('\t--- Failed to update result to database. ---')
