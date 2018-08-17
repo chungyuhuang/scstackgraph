@@ -16,23 +16,64 @@ edges = []
 
 
 def main():
+    # n = [('jp1', {'label': 'HEAD', 'weight': '-1'}),
+    #      ('PUSH60', {'label': 'PUSH60', 'weight': '-1'}),
+    #      ('PUSH40', {'label': 'PUSH40', 'weight': '-1'}),
+    #      ('MSTORE', {'label': 'MSTORE', 'weight': '-1'}),
+    #      ('PUSH4', {'label': 'PUSH4', 'weight': '-1'}),
+    #      ('calldatasize', {'label': 'CALLDATASIZE', 'weight': '-1'}),
+    #      ('LT', {'label': 'LT', 'weight': '-1'}),
+    #      ('PUSH1', {'label': 'PUSH tag1', 'weight': '-1'}),
+    #      ('JUMPI', {'label': 'JUMPI', 'weight': '-1'}),
+    #      ('PUSH0', {'label': 'PUSH0', 'weight': '-1'}),
+    #      ('calldataload', {'label': 'CALLDATALOAD', 'weight': '-1'}),
+    #      ('PUSH100', {'label': 'PUSH 100...', 'weight': '-1'}),
+    #      ('SWAP1', {'label': 'SWAP1', 'weight': '-1'}),
+    #      ('DIV', {'label': 'DIV', 'weight': '-1'}),
+    #      ('PUSHF', {'label': 'PUSH FFF...', 'weight': '-1'}),
+    #      ('AND', {'label': 'AND', 'weight': '-1'}),
+    #      ('DUP1', {'label': 'DUP1', 'weight': '-1'}),
+    #      ('PUSH72', {'label': 'PUSH 72EA4B8C', 'weight': '-1'}),
+    #      ('EQ', {'label': 'EQ', 'weight': '-1'}),
+    #      ('PUSH2', {'label': 'PUSH tag2', 'weight': '-1'}),
+    #      ('JUMPI2', {'label': 'JUMPI', 'weight': '-1'}),
+    #      ('JUMPDEST1', {'label': 'JUMPDEST', 'weight': '-1'}),
+    #
+    #      ]
+    #
+    # e = [(('jp1', 'PUSH60'), {'label': '+1'}),
+    #      (('PUSH60', 'PUSH40'), {'label': '+1'}),
+    #      (('PUSH40', 'MSTORE'), {'label': '-2'}),
+    #      (('MSTORE', 'PUSH4'), {'label': '+1'}),
+    #      (('PUSH4', 'calldatasize'), {'label': '+1'}),
+    #      (('calldatasize', 'LT'), {'label': '-1'}),
+    #      (('LT', 'PUSH1'), {'label': '+1'}),
+    #      (('PUSH1', 'JUMPI'), {'label': '-2'}),
+    #      (('JUMPI', 'PUSH0'), {'label': '+1'}),
+    #     (('JUMPI', 'JUMPDEST1'), {'label': '0'}),
+    #      (('PUSH0', 'calldataload'), {'label': '0'}),
+    #      (('calldataload', 'PUSH100'), {'label': '+1'}),
+    #      (('PUSH100', 'SWAP1'), {'label': '0'}),
+    #      (('SWAP1', 'DIV'), {'label': '-1'}),
+    #      (('DIV', 'PUSHF'), {'label': '0'}),
+    #      (('PUSHF', 'AND'), {'label': '+1'}),
+    #      (('AND', 'DUP1'), {'label': '+1'}),
+    #      (('DUP1', 'PUSH72'), {'label': '+1'}),
+    #      (('PUSH72', 'EQ'), {'label': '-1'}),
+    #      (('EQ', 'PUSH2'), {'label': '+1'}),
+    #      (('PUSH2', 'JUMPI2'), {'label': '-2'}),
+    #      (('JUMPI2', 'JUMPDEST1'), {'label': '0'}),
+    #      ]
+    # create_graph(n,e,123)
     generate_s_e_t()
-    # find_params()
-
-
-def find_params():
-    f_opcdoe = os.path.join(os.path.dirname(__file__), 'opcode')
-    with open(f_opcdoe, 'r') as f:
-        for idx, line in enumerate(f):
-            print(line.rstrip())
 
 
 def generate_s_e_t():
-    opcode_with_formula = ['EXP', 'SHA3', 'CALLDATACOPY', 'CODECOPY', 'EXTCODECOPY', 'SSTORE', 'CALL', 'CALLCODE',
+    opcode_with_formula = ['EXP', 'SHA3', 'CALLDATACOPY', 'CODECOPY', 'EXTCODECOPY', 'SSTORE', 'CALLCODE',
                            'DELEGATECALL', 'SELFDESTRUCT', 'LOG0', 'LOG1', 'LOG2', 'LOG3', 'LOG4', 'KECCAK']
     head = '0'
     gas_total = 0
-    f_tmp = os.path.join(os.path.dirname(__file__), 'tmp')
+    f_tmp = os.path.join(os.path.dirname(__file__), 'opcode')
     with open(f_tmp, 'r') as f:
         for idx, line in enumerate(f):
             instruction = line.rstrip().split('  ')[0].strip()

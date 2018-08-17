@@ -122,3 +122,17 @@ src_mapping.py
 /img
 tmp
 op_gas
+SE
+ana_status
+asmJson
+funchash.json
+functionHash
+opcode_cons
+opcode_pre
+opcode_two
+output/
+test
+test.sol
+test2.sol
+text.bin
+state.json
