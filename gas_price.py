@@ -124,7 +124,8 @@ gas_table = {'STOP': 0,
              'SHA3': 30,
              'KECCAK': 30,
              'SSTORE': 20000,
-             'CALLVALUE': 2
+             'CALLVALUE': 2,
+             'REVERT': 0
              }
 
 

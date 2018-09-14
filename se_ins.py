@@ -27,23 +27,22 @@ def main():
     # stack_simulation(storage, stack, memory, jumpdest, gas)
 
 
-def stack_simulation(line, stack, storage, memory, jumpdest, gas, input_data, f_constraint, t_constraint):
+def stack_simulation(line, stack, storage, memory, sym_mem, jumpdest, gas, input_data, f_constraint, t_constraint):
     path_conditions_and_vars = {"path_condition": []}
     global_state = get_init_global_state(path_conditions_and_vars)
 
     # analysis = init_analysis()
     params = Parameter(path_conditions_and_vars=path_conditions_and_vars, global_state=global_state)
+    line = line.rstrip()
 
     if 'tag' in line.split(' ')[0]:
         # print(line)
-        condition = sym_exec_ins(params, 'JUMPDEST', 0, storage, stack, memory, input_data, f_constraint, t_constraint)
+        condition, target = sym_exec_ins(params, 'JUMPDEST', 0, storage, stack, memory, sym_mem, input_data, f_constraint, t_constraint)
     else:
         # print(line)
-
-        condition = sym_exec_ins(params, line, 0, storage, stack, memory, input_data,  f_constraint, t_constraint)
-
-    # print(stack)
-    return condition, len(f_constraint)+len(t_constraint), f_constraint, t_constraint, stack
+        condition, target = sym_exec_ins(params, line, 0, storage, stack, memory, sym_mem, input_data, f_constraint, t_constraint)
+    # print('Stack = ', stack)
+    return condition, target, f_constraint, t_constraint, stack
 
 
 class Parameter:
@@ -72,9 +71,9 @@ def ceil32(x):
 
 
 def isSymbolic(value):
-    print('is symbolic:')
-    print('six.interger_types = ', six.integer_types)
-    print(isinstance(value, six.integer_types))
+    # print('is symbolic:')
+    # print('six.interger_types = ', six.integer_types)
+    # print(isinstance(value, six.integer_types))
     return not isinstance(value, six.integer_types)
 
 
@@ -225,7 +224,7 @@ def get_init_global_state(path_conditions_and_vars):
 
 
 # Symbolically executing an instruction
-def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_constraint, t_constraint):
+def sym_exec_ins(params, instr, block, storage, stack, memory, sym_mem, input_data,  f_constraint, t_constraint):
     global MSIZE
     global visited_pcs
     global solver
@@ -248,7 +247,6 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
     # print("memory = ", memory)
     # print("storage = ", storage)
     # print("\n")
-
     visited_pcs.add(global_state["pc"])
 
     instr_parts = str.split(instr, ' ')
@@ -286,6 +284,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
     elif opcode == "STOP":
         global_state["pc"] += 1
     elif opcode == "TIMESTAMP":
+        stack.insert(0, 'TIMESTAMP')
         global_state["pc"] += 1
     elif opcode == "REVERT":
         global_state["pc"] += 1
@@ -307,21 +306,24 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             if isinstance(first, int) and isinstance(second, int):
                 computed = first + second
             else:
-                # try:
-                #     first = int(first, 16)
-                # except:
-                #     first = first
-                # try:
-                #     second = int(second, 16)
-                # except:
-                #     second = second
+                try:
+                    first = int(first)
+                except ValueError:
+                    first = first
+                try:
+                    second = int(second)
+                except ValueError:
+                    second = second
+
                 if isinstance(first, str):
                     computed = '(' + first + '+' + str(second) + ')'
                 elif isinstance(second, str):
                     computed = '(' + str(first) + '+' + second + ')'
-                else:
+                elif isinstance(first, str) and isinstance(second, str):
                     # computed = '0x{:x}'.format(int(first + second))
                     computed = '(' + str(first) + '+' + str(second) + ')'
+                else:
+                    computed = first + second
 
             # else:
             #     # both are real and we need to manually modulus with 2 ** 256
@@ -396,6 +398,26 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             if isinstance(first, int) and isinstance(second, int):
                 computed = (first - second) #% (2 ** 256)
             else:
+                try:
+                    first = int(first)
+                except ValueError as ex:
+                    print(ex)
+                    first = first
+                try:
+                    second = int(second)
+                except ValueError as ex:
+                    print(ex)
+                    second = second
+
+                if isinstance(first, str):
+                    computed = '(' + first + '-' + str(second) + ')'
+                elif isinstance(second, str):
+                    computed = '(' + str(first) + '-' + second + ')'
+                elif isinstance(first, str) and isinstance(second, str):
+                    # computed = '0x{:x}'.format(int(first + second))
+                    computed = '(' + str(first) + '-' + str(second) + ')'
+                else:
+                    computed = first - second
                 # try:
                 #     first = int(first, 16)
                 # except:
@@ -404,13 +426,13 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
                 #     second = int(second, 16)
                 # except:
                 #     second = second
-                if isinstance(first, str):
-                    computed = '(' + first + '-' + str(second) + ')'
-                elif isinstance(second, str):
-                    computed = '(' + str(first) + '-' + second + ')'
-                else:
-                    # computed = '0x{:x}'.format(int(first - second))
-                    computed = '(' + str(first) + '-' + str(second) + ')'
+                # if isinstance(first, str):
+                #     computed = '(' + first + '-' + str(second) + ')'
+                # elif isinstance(second, str):
+                #     computed = '(' + str(first) + '-' + second + ')'
+                # else:
+                #     # computed = '0x{:x}'.format(int(first - second))
+                #     computed = '(' + str(first) + '-' + str(second) + ')'
             # computed = simplify(computed) if is_expr(computed) else computed
 
             # check_revert = False
@@ -528,28 +550,59 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             global_state["pc"] += 1
             first = stack.pop(0)
             second = stack.pop(0)
-            if isAllReal(first, second):
+
+            if isinstance(first, int) and isinstance(second, int):
                 if second == 0:
                     computed = 0
                 else:
                     first = to_unsigned(first)
                     second = to_unsigned(second)
                     computed = first % second & UNSIGNED_BOUND_NUMBER
-
             else:
-                first = to_symbolic(first)
-                second = to_symbolic(second)
+                # if isinstance(first, str):
+                #     first = int(first, 16)
+                # if isinstance(second, str):
+                #     second = int(second, 16)
+                # computed = '0x{:x}'.format(int(first / second))
 
-                solver.push()
-                solver.add(Not(second == 0))
-                if check_sat(solver) == unsat:
-                    # it is provable that second is indeed equal to zero
-                    computed = 0
+                # try:
+                #     first = int(first, 16)
+                # except:
+                #     first = first
+                # try:
+                #     second = int(second, 16)
+                # except:
+                #     second = second
+                if isinstance(first, str):
+                    computed = '(' + first + '%' + str(second) + ')'
+                elif isinstance(second, str):
+                    computed = '(' + str(first) + '%' + second + ')'
                 else:
-                    computed = URem(first, second)
-                solver.pop()
+                    # computed = '0x{:x}'.format(int(first / second))
+                    computed = '(' + str(first) + '%' + str(second) + ')'
 
-            computed = simplify(computed) if is_expr(computed) else computed
+            # if isAllReal(first, second):
+            #     if second == 0:
+            #         computed = 0
+            #     else:
+            #         first = to_unsigned(first)
+            #         second = to_unsigned(second)
+            #         computed = first % second & UNSIGNED_BOUND_NUMBER
+
+            # else:
+            #     first = to_symbolic(first)
+            #     second = to_symbolic(second)
+            #
+            #     solver.push()
+            #     solver.add(Not(second == 0))
+            #     if check_sat(solver) == unsat:
+            #         # it is provable that second is indeed equal to zero
+            #         computed = 0
+            #     else:
+            #         computed = URem(first, second)
+            #     solver.pop()
+
+            # computed = simplify(computed) if is_expr(computed) else computed
             stack.insert(0, computed)
         else:
             raise ValueError('STACK underflow')
@@ -665,9 +718,9 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
                 computed = pow(base, exponent, 2**256)
                 stack.insert(0, computed)
                 if computed == 0:
-                    return 10
+                    return 10, 'no'
                 else:
-                    return 10+(10*(1+math.log(computed, 256)))
+                    return 10+(10*(1+math.log(computed, 256))), 'no'
             else:
                 # The computed value is unknown, this is because power is
                 # not supported in bit-vector theory
@@ -688,7 +741,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
                 elif isinstance(exponent, str):
                     computed = '(' + str(base) + '**' + exponent + ')'
                 stack.insert(0, computed)
-                return '10+(10*(1+log256({})))'.format(computed)
+                return '10+(10*(1+log256({})))'.format(computed), 'no'
                 # else:
                 #     # computed = '0x{:x}'.format(int(pow(base, exponent, 2**256)))
                 #     computed = simplify(computed) if is_expr(computed) else computed
@@ -747,17 +800,21 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
                 else:
                     computed = 0
             else:
-                # if isinstance(first, str):
-                #     try:
-                #         first = int(first, 16)
-                #     except:
-                #         first = first
-                # if isinstance(second, str):
-                #     tmp = second.split('0x')
-                #     if len(tmp) > 1:
-                #         second = int(second, 16)
-                #     else:
-                #         second = second
+                if isinstance(first, str):
+                    try:
+                        first = int(first)
+                    except ValueError:
+                        first = first
+                if isinstance(second, str):
+                    # tmp = second.split('0x')
+                    # if len(tmp) > 1:
+                    #     second = int(second, 16)
+                    # else:
+                    #     second = second
+                    try:
+                        second = int(second)
+                    except ValueError:
+                        second = second
                 if isinstance(first, int) and isinstance(second, int):
                     first = to_unsigned(first)
                     second = to_unsigned(second)
@@ -1015,8 +1072,12 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             s1 = stack.pop(0)
             # print('s0= ', s0)
             # print('s1= ', s1)
-            gas = 30 + 6*s0
-            # print('gas = ', gas)
+            if isinstance(s0, str):
+                gas = '30+6*' + str(s0)
+            elif isinstance(s0, int):
+                gas = 30 + 6*s0
+            else:
+                gas = '30+6*' + str(s0)
             if isinstance(s0, int) and isinstance(s1, int):
                 # print(s0, s1)
                 # simulate the hashing of sha3
@@ -1044,7 +1105,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             #     new_var = BitVec(new_var_name, 256)
             #     path_conditions_and_vars[new_var_name] = new_var
             #     stack.insert(0, new_var)
-            return gas
+            return gas, 'no'
         else:
             raise ValueError('STACK underflow')
     #
@@ -1054,31 +1115,31 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
         global_state["pc"] += 1
         stack.insert(0, path_conditions_and_vars["Ia"])
 
-    # elif opcode == "BALANCE":
-    #     if len(stack) > 0:
-    #         global_state["pc"] += 1
-    #         address = stack.pop(0)
-    #         if isReal(address) and global_params.USE_GLOBAL_BLOCKCHAIN:
-    #             new_var = data_source.getBalance(address)
-    #         else:
-    #             new_var_name = gen.gen_balance_var()
-    #             if new_var_name in path_conditions_and_vars:
-    #                 new_var = path_conditions_and_vars[new_var_name]
-    #             else:
-    #                 new_var = BitVec(new_var_name, 256)
-    #                 path_conditions_and_vars[new_var_name] = new_var
-    #         if isReal(address):
-    #             hashed_address = "concrete_address_" + str(address)
-    #         else:
-    #             hashed_address = str(address)
-    #         global_state["balance"][hashed_address] = new_var
-    #         stack.insert(0, new_var)
-    #     else:
-    #         raise ValueError('STACK underflow')
+    elif opcode == "BALANCE":
+        if len(stack) > 0:
+            global_state["pc"] += 1
+            address = stack.pop(0)
+            if isReal(address) and global_params.USE_GLOBAL_BLOCKCHAIN:
+                new_var = data_source.getBalance(address)
+            else:
+                new_var_name = gen.gen_balance_var()
+                if new_var_name in path_conditions_and_vars:
+                    new_var = path_conditions_and_vars[new_var_name]
+                else:
+                    new_var = BitVec(new_var_name, 256)
+                    path_conditions_and_vars[new_var_name] = new_var
+            if isReal(address):
+                hashed_address = "concrete_address_" + str(address)
+            else:
+                hashed_address = str(address)
+            global_state["balance"][hashed_address] = new_var
+            stack.insert(0, new_var)
+        else:
+            raise ValueError('STACK underflow')
     elif opcode == "CALLER":  # get caller address
         # that is directly responsible for this execution
         # global_state["pc"] += 1
-        stack.insert(0, global_state["sender_address"])
+        stack.insert(0, str(global_state["sender_address"]))
     # elif opcode == "ORIGIN":  # get execution origination address
     #     global_state["pc"] += 1
     #     stack.insert(0, global_state["origin"])
@@ -1149,8 +1210,11 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             z = stack.pop(0)
             y = stack.pop(0)
             x = stack.pop(0)
-            gas = 2 + 3*z
-            return gas
+            if isinstance(z, str):
+                gas = '2+3*' + z
+            else:
+                gas = 2 + 3*z
+            return gas, 'no'
         else:
             raise ValueError('STACK underflow')
     elif opcode == "CODESIZE":
@@ -1162,62 +1226,67 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
         #     evm = evm_file.read()[:-1]
         #     code_size = len(evm)/2
         stack.insert(0, 'code_size')
-    # elif opcode == "CODECOPY":
-    #     if len(stack) > 2:
-    #         global_state["pc"] += 1
-    #         mem_location = stack.pop(0)
-    #         code_from = stack.pop(0)
-    #         no_bytes = stack.pop(0)
-    #         current_miu_i = global_state["miu_i"]
-    #
-    #         if isAllReal(mem_location, current_miu_i, code_from, no_bytes):
-    #             if six.PY2:
-    #                 temp = long(math.ceil((mem_location + no_bytes) / float(32)))
-    #             else:
-    #                 temp = int(math.ceil((mem_location + no_bytes) / float(32)))
-    #
-    #             if temp > current_miu_i:
-    #                 current_miu_i = temp
-    #
-    #             if g_disasm_file.endswith('.disasm'):
-    #                 evm_file_name = g_disasm_file[:-7]
-    #             else:
-    #                 evm_file_name = g_disasm_file
-    #             with open(evm_file_name, 'r') as evm_file:
-    #                 evm = evm_file.read()[:-1]
-    #                 start = code_from * 2
-    #                 end = start + no_bytes * 2
-    #                 code = evm[start: end]
-    #             mem[mem_location] = int(code, 16)
-    #         else:
-    #             new_var_name = gen.gen_code_var("Ia", code_from, no_bytes)
-    #             if new_var_name in path_conditions_and_vars:
-    #                 new_var = path_conditions_and_vars[new_var_name]
-    #             else:
-    #                 new_var = BitVec(new_var_name, 256)
-    #                 path_conditions_and_vars[new_var_name] = new_var
-    #
-    #             temp = ((mem_location + no_bytes) / 32) + 1
-    #             current_miu_i = to_symbolic(current_miu_i)
-    #             expression = current_miu_i < temp
-    #             solver.push()
-    #             solver.add(expression)
-    #             if MSIZE:
-    #                 if check_sat(solver) != unsat:
-    #                     current_miu_i = If(expression, temp, current_miu_i)
-    #             solver.pop()
-    #             mem.clear() # very conservative
-    #             mem[str(mem_location)] = new_var
-    #         global_state["miu_i"] = current_miu_i
-    #     else:
-    #         raise ValueError('STACK underflow')
+    elif opcode == "CODECOPY":
+        if len(stack) > 2:
+            global_state["pc"] += 1
+            mem_location = stack.pop(0)
+            code_from = stack.pop(0)
+            no_bytes = stack.pop(0)
+            # current_miu_i = global_state["miu_i"]
+            #
+            # if isAllReal(mem_location, current_miu_i, code_from, no_bytes):
+            #     if six.PY2:
+            #         temp = long(math.ceil((mem_location + no_bytes) / float(32)))
+            #     else:
+            #         temp = int(math.ceil((mem_location + no_bytes) / float(32)))
+            #
+            #     if temp > current_miu_i:
+            #         current_miu_i = temp
+            #
+            #     if g_disasm_file.endswith('.disasm'):
+            #         evm_file_name = g_disasm_file[:-7]
+            #     else:
+            #         evm_file_name = g_disasm_file
+            #     with open(evm_file_name, 'r') as evm_file:
+            #         evm = evm_file.read()[:-1]
+            #         start = code_from * 2
+            #         end = start + no_bytes * 2
+            #         code = evm[start: end]
+            #     mem[mem_location] = int(code, 16)
+            # else:
+            #     new_var_name = gen.gen_code_var("Ia", code_from, no_bytes)
+            #     if new_var_name in path_conditions_and_vars:
+            #         new_var = path_conditions_and_vars[new_var_name]
+            #     else:
+            #         new_var = BitVec(new_var_name, 256)
+            #         path_conditions_and_vars[new_var_name] = new_var
+            #
+            #     temp = ((mem_location + no_bytes) / 32) + 1
+            #     current_miu_i = to_symbolic(current_miu_i)
+            #     expression = current_miu_i < temp
+            #     solver.push()
+            #     solver.add(expression)
+            #     if MSIZE:
+            #         if check_sat(solver) != unsat:
+            #             current_miu_i = If(expression, temp, current_miu_i)
+            #     solver.pop()
+            #     mem.clear() # very conservative
+            #     mem[str(mem_location)] = new_var
+            # global_state["miu_i"] = current_miu_i
+        else:
+            raise ValueError('STACK underflow')
     elif opcode == "RETURNDATACOPY":
         if len(stack) > 2:
             global_state["pc"] += 1
             stack.pop(0)
             stack.pop(0)
             z = stack.pop(0)
-            gas = '2+3*' + z
+            print(z)
+            if isinstance(z, int):
+                gas = 2 + 3 * int(z)
+            else:
+                gas = '2+3*'+z
+            return gas, 'no'
         else:
             raise ValueError('STACK underflow')
     elif opcode == "RETURNDATASIZE":
@@ -1313,9 +1382,9 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
     # elif opcode == "TIMESTAMP":  # information from block header
     #     global_state["pc"] += 1
     #     stack.insert(0, global_state["currentTimestamp"])
-    # elif opcode == "NUMBER":  # information from block header
-    #     global_state["pc"] += 1
-    #     stack.insert(0, global_state["currentNumber"])
+    elif opcode == "NUMBER":  # information from block header
+        global_state["pc"] += 1
+        stack.insert(0, 'currentNumber')
     # elif opcode == "DIFFICULTY":  # information from block header
     #     global_state["pc"] += 1
     #     stack.insert(0, global_state["currentDifficulty"])
@@ -1333,6 +1402,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             raise ValueError('STACK underflow')
     elif opcode == "MLOAD":
         if len(stack) > 0:
+            value = ''
             # global_state["pc"] += 1
             address = stack.pop(0)
             # current_miu_i = global_state["miu_i"]
@@ -1343,10 +1413,19 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             #         temp = int(math.ceil((address + 32) / float(32)))
             #     if temp > current_miu_i:
             #         current_miu_i = temp
+            # print(stack)
             # print(address)
+            # print(len(memory))
             # print(memory)
-            address = int(address)
-            value = memory[address]
+            try:
+                address = int(address)
+                value = memory[address]
+            except:
+                print(sym_mem)
+                for i in sym_mem:
+                    if address == i[0]:
+                        value = i[1]
+
             stack.insert(0, value)
             # else:
             #     temp = ((address + 31) / 32) + 1
@@ -1381,21 +1460,31 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             # current_miu_i = global_state["miu_i"]
             # if isinstance(stored_address, str) and isinstance(stored_value, str):
 
-            stored_address = int(stored_address)
-            # try:
-            stored_value = int(stored_value)
-            # except:
-            #     stored_value = stored_value
-            # preparing data for hashing later
-            old_size = len(memory) // 32
-            # print(old_size)
-            new_size = ceil32(stored_address + 32) // 32
-            # print(new_size)
-            mem_extend = (new_size - old_size) * 32
-            memory.extend([0] * mem_extend)
-            value = stored_value
-            for i in range(31, -1, -1):
-                memory[stored_address + i] = value
+            # print(stored_address, stored_value)
+            try:
+                stored_address = int(stored_address)
+            except (TypeError, ValueError):
+                stored_address = stored_address
+            try:
+                stored_value = int(stored_value)
+            except (TypeError, ValueError):
+                stored_value = stored_value
+
+            if isinstance(stored_address, str):
+                sym_mem.append((stored_address, stored_value))
+            elif isinstance(stored_address, int):
+                # preparing data for hashing later
+                old_size = len(memory) // 32
+                # print(old_size)
+                new_size = ceil32(stored_address + 32) // 32
+                # print(new_size)
+                mem_extend = (new_size - old_size) * 32
+                memory.extend([0] * mem_extend)
+                value = stored_value
+                for i in range(31, -1, -1):
+                    memory[stored_address + i] = value
+            else:
+                sym_mem.append((str(stored_address), stored_value))
             # print('memory = ', memory)
 
             # if isAllReal(stored_address, current_miu_i):
@@ -1522,7 +1611,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             # else:
             #     # note that the stored_value could be unknown
             #     global_state["Ia"][str(stored_address)] = stored_value
-            return gas
+            return gas, 'no'
         else:
             raise ValueError('STACK underflow')
     elif opcode == "JUMP":
@@ -1561,9 +1650,9 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             # if target_address not in edges[block]:
             #     edges[block].append(target_address)
             if flag == 1:
-                return 1
+                return 1, target_address
             elif flag == 0:
-                return 0
+                return 0, target_address
             else:
                 t_constraint.append(flag+'==1')
                 f_constraint.append(flag+'==0')
@@ -1572,7 +1661,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
                 # solve()
                 # print('False constraint = ', f_constraint)
                 # print('True constraint = ', t_constraint)
-                return 'constraint'
+                return flag, target_address
         else:
             raise ValueError('STACK underflow')
     # elif opcode == "PC":
@@ -1582,16 +1671,17 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
     #     global_state["pc"] += 1
     #     msize = 32 * global_state["miu_i"]
     #     stack.insert(0, msize)
-    # elif opcode == "GAS":
-    #     # In general, we do not have this precisely. It depends on both
-    #     # the initial gas and the amount has been depleted
-    #     # we need o think about this in the future, in case precise gas
-    #     # can be tracked
-    #     global_state["pc"] += 1
-    #     new_var_name = gen.gen_gas_var()
-    #     new_var = BitVec(new_var_name, 256)
-    #     path_conditions_and_vars[new_var_name] = new_var
-    #     stack.insert(0, new_var)
+    elif opcode == "GAS":
+        # In general, we do not have this precisely. It depends on both
+        # the initial gas and the amount has been depleted
+        # we need o think about this in the future, in case precise gas
+        # can be tracked
+        # global_state["pc"] += 1
+        # new_var_name = gen.gen_gas_var()
+        # new_var = BitVec(new_var_name, 256)
+        # path_conditions_and_vars[new_var_name] = new_var
+        new_var = 'GasAvaliable'
+        stack.insert(0, new_var)
     elif opcode == "JUMPDEST":
         # Literally do nothing
         global_state["pc"] += 1
@@ -1602,10 +1692,22 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
     elif opcode.startswith('PUSH', 0):  # this is a push instruction
         # position = int(opcode[4:], 10)
         # global_state["pc"] = global_state["pc"] + 1 + position
+        pushed_value = ''
+        # print(instr_parts)
         if instr_parts[1] == '[tag]':
-            pushed_value = int(instr_parts[2], 16)
+            pushed_value = int(instr_parts[2])
         else:
-            pushed_value = int(instr_parts[1], 16)
+            try:
+                pushed_value = int(instr_parts[1])
+            except ValueError:
+                if len(instr_parts[1]) > 4:
+                    pushed_value = str(instr_parts[1])
+                elif instr_parts[1] == 'data':
+                    if len(instr_parts[1]) > 4:
+                        pushed_value = str(instr_parts[2])
+                else:
+                    pushed_value = int(instr_parts[1], 16)
+
             # if len(instr_parts[1]) > 10:
             #     count = 64 - len(instr_parts[1])
             #     pushed_value = instr_parts[1]
@@ -1617,6 +1719,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             #     pushed_value = '0x{:x}'.format(int(instr_parts[1], 16))
                 # hex(int(instr_parts[1], 16)).split('0x')[1]
         stack.insert(0, pushed_value)
+
         # if global_params.UNIT_TEST == 3: # test evm symbolic
         #     stack[0] = BitVecVal(stack[0], 256)
     #
@@ -1657,9 +1760,13 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             l = stack.pop(0)
             num_of_pops -= 1
             if count == 1:
-                gas = (int(opcode[3:]) + 1) * 375 + (8 * l)
+                print(l)
+                if isinstance(l, str):
+                    gas = str((int(opcode[3:]) + 1) * 375) + '+(8*' + l + ')'
+                else:
+                    gas = (int(opcode[3:]) + 1) * 375 + (8 * l)
             count += 1
-        return gas
+        return gas, 'no'
     #
     # #
     # #  f0s: System Operations
@@ -1696,7 +1803,6 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
             if isReal(transfer_amount):
                 if transfer_amount == 0:
                     stack.insert(0, 1)   # x = 0
-                    return
 
             # Let us ignore the call depth
             # balance_ia = global_state["balance"]["Ia"]
@@ -1855,6 +1961,7 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, input_data,  f_co
         #     # exit(UNKNOWN_INSTRUCTION)
         raise Exception('UNKNOWN INSTRUCTION: ' + opcode)
 
+    return 'no', 'no'
 
 if __name__ == '__main__':
     main()
