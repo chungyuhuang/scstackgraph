@@ -91,7 +91,7 @@ def update_source_code_to_db(code, test_mode):
         return result
 
 
-def update_status_to_db(status, contract_id, test_mode):
+def update_status_to_db(status, table_name, contract_id, test_mode):
     if not test_mode:
         conn = connect_to_db()
         cur = conn.cursor()
@@ -99,13 +99,13 @@ def update_status_to_db(status, contract_id, test_mode):
         try:
             print('[INFO] Update contract analysis status.')
             cur.execute('''
-                            UPDATE contract
+                            UPDATE {}
                             SET status = '{}'
                             WHERE id='{}';
-                            '''.format(status, contract_id))
+                            '''.format(table_name, status, contract_id))
             conn.commit()
         except Exception as ex:
-            print('[FAIL] Failed to update analysis status to database. ---')
+            print('[FAIL] Failed to update analysis status to database.')
             print('Error: ', ex)
             sys.exit(0)
 

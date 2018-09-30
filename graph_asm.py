@@ -88,8 +88,9 @@ def asm_analysis(mode, contract_id):
         contract_opcode = d[0]
         contract_name = d[1]
         pre_id = d[2]
+        print('contract id = ', contract_id)
         nodes, edges = cfg_construction(contract_opcode, contract_name, pre_id, nodes, edges, 0)  # 將OPCODE建成CFG
-        db.update_status_to_db('CFG_CREATED', contract_id, test_mode)  # 更新資料庫中分析狀態
+        db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
         # symbolic_simulation(nodes, edges)
         # cycle_detection(nodes, edges)
 
@@ -172,7 +173,7 @@ def preproc(contract_id, code, file_name, mode):
                     op_content = f1.read()
 
                 db.update_assembly_to_db(op_content, op_pre_content, contract_id, name, test_mode)
-                db.update_status_to_db('DISASSEMBLED', contract_id, test_mode)
+                db.update_status_to_db('DISASSEMBLED', 'contract', contract_id, test_mode)
 
             except Exception as ex:
                 print('[Error]: ', ex)
