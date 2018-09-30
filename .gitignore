@@ -119,7 +119,6 @@ opcode_tmp
 sourcecode
 contract.sol
 src_mapping.py
-/img
 tmp
 op_gas
 SE
@@ -130,10 +129,13 @@ functionHash
 opcode_cons
 opcode_pre
 opcode_two
-output/
 test
 test.sol
 test2.sol
 text.bin
 state.json
 temp_code.py
+graph_op.py
+crawler.py
+cycle_gas_count.py
+/sikuli
