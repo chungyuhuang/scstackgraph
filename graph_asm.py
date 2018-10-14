@@ -69,7 +69,7 @@ def main():
                 print('[INFO] Start checking contract.\n')
                 preproc('', src, args.code, 2)
 
-            asm_analysis(2, '')
+            asm_analysis(2, 1)
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
 
@@ -90,8 +90,8 @@ def asm_analysis(mode, contract_id):
         pre_id = d[2]
         print('contract id = ', contract_id)
         nodes, edges = cfg_construction(contract_opcode, contract_name, pre_id, nodes, edges, 0)  # 將OPCODE建成CFG
-        db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
-        # symbolic_simulation(nodes, edges)
+        # db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
+        symbolic_simulation(nodes, edges)
         # cycle_detection(nodes, edges)
 
 
@@ -647,7 +647,7 @@ def stack_status_constraint(stack, storage, memory, sym_mem, nodes, edges, tag, 
     # print(con)
 
     # print(count, tag, gas_sum)
-    if count > 200:
+    if count > 50:
         return gas_sum, nodes, edges, q
     else:
         for n in nodes:

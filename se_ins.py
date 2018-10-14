@@ -15,7 +15,7 @@ import sha3
 UNSIGNED_BOUND_NUMBER = 2**256 - 1
 gen = Generator()
 visited_pcs = set()
-# storage = []
+COUNT_EXECUTION_TIME = 50
 
 
 def main():
@@ -37,10 +37,12 @@ def stack_simulation(line, stack, storage, memory, sym_mem, jumpdest, gas, input
 
     if 'tag' in line.split(' ')[0]:
         # print(line)
-        condition, target = sym_exec_ins(params, 'JUMPDEST', 0, storage, stack, memory, sym_mem, input_data, f_constraint, t_constraint)
+        condition, target = sym_exec_ins(params, 'JUMPDEST', 0, storage, stack, memory, sym_mem, input_data,
+                                         f_constraint, t_constraint)
     else:
         # print(line)
-        condition, target = sym_exec_ins(params, line, 0, storage, stack, memory, sym_mem, input_data, f_constraint, t_constraint)
+        condition, target = sym_exec_ins(params, line, 0, storage, stack, memory, sym_mem, input_data, f_constraint,
+                                         t_constraint)
     # print('Stack = ', stack)
     return condition, target, f_constraint, t_constraint, stack
 
@@ -623,14 +625,14 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, sym_mem, input_da
                 first = to_symbolic(first)
                 second = to_symbolic(second)
 
-                solver.push()
+                # solver.push()
                 solver.add(Not(second == 0))
                 if check_sat(solver) == unsat:
                     # it is provable that second is indeed equal to zero
                     computed = 0
                 else:
 
-                    solver.push()
+                    # solver.push()
                     solver.add(first < 0) # check sign of first element
                     sign = BitVecVal(-1, 256) if check_sat(solver) == sat \
                         else BitVecVal(1, 256)
@@ -1050,14 +1052,15 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, sym_mem, input_da
             else:
                 first = to_symbolic(first)
                 second = to_symbolic(second)
-                solver.push()
-                solver.add( Not (Or( first >= 32, first < 0 ) ) )
-                if check_sat(solver) == unsat:
-                    computed = 0
-                else:
-                    computed = second & (255 << (8 * byte_index))
-                    computed >>= (8 * byte_index)
-                solver.pop()
+                print(first, second)
+                # solver.push()
+                # solver.add( Not (Or( first >= 32, first < 0 ) ) )
+                # if check_sat(solver) == unsat:
+                #     computed = 0
+                # else:
+                computed = int(second, 16) & (255 << (8 * byte_index))
+                computed >>= (8 * byte_index)
+                # solver.pop()
             computed = simplify(computed) if is_expr(computed) else computed
             stack.insert(0, computed)
         else:
@@ -1298,24 +1301,24 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, sym_mem, input_da
     # elif opcode == "GASPRICE":
     #     global_state["pc"] += 1
     #     stack.insert(0, global_state["gas_price"])
-    # elif opcode == "EXTCODESIZE":
-    #     if len(stack) > 0:
-    #         global_state["pc"] += 1
-    #         address = stack.pop(0)
-    #         if isReal(address) and global_params.USE_GLOBAL_BLOCKCHAIN:
-    #             code = data_source.getCode(address)
-    #             stack.insert(0, len(code)/2)
-    #         else:
-    #             #not handled yet
-    #             new_var_name = gen.gen_code_size_var(address)
-    #             if new_var_name in path_conditions_and_vars:
-    #                 new_var = path_conditions_and_vars[new_var_name]
-    #             else:
-    #                 new_var = BitVec(new_var_name, 256)
-    #                 path_conditions_and_vars[new_var_name] = new_var
-    #             stack.insert(0, new_var)
-    #     else:
-    #         raise ValueError('STACK underflow')
+    elif opcode == "EXTCODESIZE":
+        if len(stack) > 0:
+            # global_state["pc"] += 1
+            address = stack.pop(0)
+            # if isReal(address) and global_params.USE_GLOBAL_BLOCKCHAIN:
+            code = data_source.getCode(address)
+            stack.insert(0, len(code)/2)
+            # else:
+            #     #not handled yet
+            #     new_var_name = gen.gen_code_size_var(address)
+            #     if new_var_name in path_conditions_and_vars:
+            #         new_var = path_conditions_and_vars[new_var_name]
+            #     else:
+            #         new_var = BitVec(new_var_name, 256)
+            #         path_conditions_and_vars[new_var_name] = new_var
+            #         stack.insert(0, new_var)
+        else:
+            raise ValueError('STACK underflow')
     # elif opcode == "EXTCODECOPY":
     #     if len(stack) > 3:
     #         global_state["pc"] += 1
@@ -1363,19 +1366,19 @@ def sym_exec_ins(params, instr, block, storage, stack, memory, sym_mem, input_da
     # #
     # #  40s: Block Information
     # #
-    # elif opcode == "BLOCKHASH":  # information from block header
-    #     if len(stack) > 0:
-    #         global_state["pc"] += 1
-    #         stack.pop(0)
-    #         new_var_name = "IH_blockhash"
-    #         if new_var_name in path_conditions_and_vars:
-    #             new_var = path_conditions_and_vars[new_var_name]
-    #         else:
-    #             new_var = BitVec(new_var_name, 256)
-    #             path_conditions_and_vars[new_var_name] = new_var
-    #         stack.insert(0, new_var)
-    #     else:
-    #         raise ValueError('STACK underflow')
+    elif opcode == "BLOCKHASH":  # information from block header
+        if len(stack) > 0:
+            global_state["pc"] += 1
+            stack.pop(0)
+            new_var_name = "IH_blockhash"
+            if new_var_name in path_conditions_and_vars:
+                new_var = path_conditions_and_vars[new_var_name]
+            else:
+                new_var = BitVec(new_var_name, 256)
+                path_conditions_and_vars[new_var_name] = new_var
+            stack.insert(0, new_var)
+        else:
+            raise ValueError('STACK underflow')
     # elif opcode == "COINBASE":  # information from block header
     #     global_state["pc"] += 1
     #     stack.insert(0, global_state["currentCoinbase"])
