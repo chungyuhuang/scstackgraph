@@ -125,7 +125,11 @@ gas_table = {'STOP': 0,
              'KECCAK': 30,
              'SSTORE': 20000,
              'CALLVALUE': 2,
-             'REVERT': 0
+             'REVERT': 0,
+             'tag': 0,
+             'EXP': 10,
+             'LOG': 375,
+             'RETURNDATACOPY': 2
              }
 
 

@@ -3,8 +3,12 @@
   <component name="ChangeListManager">
     <list default="true" id="0ddf3e0a-2de7-4d98-a90f-344d5413d937" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gas_price.py" afterPath="$PROJECT_DIR$/gas_price.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/graph_asm.py" afterPath="$PROJECT_DIR$/graph_asm.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/se_ins.py" afterPath="$PROJECT_DIR$/se_ins.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract" afterPath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract.svg" afterPath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract.svg" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation" afterPath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation.svg" afterPath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation.svg" />
     </list>
     <ignored path="solidity_stack_graph.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -39,8 +43,8 @@
       <file leaf-file-name="graph_asm.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/graph_asm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="374">
-              <caret line="390" column="0" selection-start-line="390" selection-start-column="0" selection-end-line="390" selection-end-column="0" />
+            <state relative-caret-position="306">
+              <caret line="414" column="36" selection-start-line="414" selection-start-column="0" selection-end-line="415" selection-end-column="0" />
               <folding>
                 <element signature="e#0#29#0" expanded="true" />
               </folding>
@@ -73,8 +77,8 @@
       <file leaf-file-name="gas_price.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/gas_price.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1564">
-              <caret line="92" column="17" selection-start-line="92" selection-start-column="14" selection-end-line="92" selection-end-column="17" />
+            <state relative-caret-position="940">
+              <caret line="112" column="33" selection-start-line="112" selection-start-column="33" selection-end-line="112" selection-end-column="33" />
               <folding />
             </state>
           </provider>
@@ -128,13 +132,13 @@
         <option value="$PROJECT_DIR$/opcode_pre" />
         <option value="$PROJECT_DIR$/SE" />
         <option value="$PROJECT_DIR$/opcode_table.py" />
-        <option value="$PROJECT_DIR$/gas_price.py" />
         <option value="$PROJECT_DIR$/opcode" />
         <option value="$PROJECT_DIR$/temp_code.py" />
         <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/modules/dbconnect.py" />
         <option value="$PROJECT_DIR$/sourcecode" />
         <option value="$PROJECT_DIR$/se_ins.py" />
+        <option value="$PROJECT_DIR$/gas_price.py" />
         <option value="$PROJECT_DIR$/graph_asm.py" />
       </list>
     </option>
@@ -414,11 +418,11 @@
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.18268467" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32739726" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4849315" sideWeight="0.528197" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.93835616" sideWeight="0.5313741" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32876712" sideWeight="0.4940429" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32876712" sideWeight="0.49722" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.28767124" sideWeight="0.471803" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.93835616" sideWeight="0.4686259" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -481,7 +485,7 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="2" />
+      <option name="time" value="3" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -768,14 +772,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/gas_price.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1564">
-          <caret line="92" column="17" selection-start-line="92" selection-start-column="14" selection-end-line="92" selection-end-column="17" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/modules/dbconnect.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1547">
@@ -808,10 +804,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/gas_price.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="940">
+          <caret line="112" column="33" selection-start-line="112" selection-start-column="33" selection-end-line="112" selection-end-column="33" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/graph_asm.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="374">
-          <caret line="390" column="0" selection-start-line="390" selection-start-column="0" selection-end-line="390" selection-end-column="0" />
+        <state relative-caret-position="306">
+          <caret line="414" column="36" selection-start-line="414" selection-start-column="0" selection-end-line="415" selection-end-column="0" />
           <folding>
             <element signature="e#0#29#0" expanded="true" />
           </folding>

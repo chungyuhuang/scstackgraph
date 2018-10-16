@@ -233,6 +233,9 @@ def cfg_construction(opcode_data, name, pre_id, nodes, edges, init_tag_num):
                                    'color': 'blue'}))
                     stack_sum = 0
             else:
+                gi = re.sub(r'\d+', '', str(s[0]))
+                gas = gas_table[gi]
+                gas_total += gas
                 if from_jumpi:
                     edges.append(((str(prev_tag), str(tag_num)),
                                   {'label': '',
@@ -342,6 +345,10 @@ def cfg_construction(opcode_data, name, pre_id, nodes, edges, init_tag_num):
                 gas_total = 0
                 gas_constraint = ''
         else:
+            gi = re.sub(r'\d+', '', str(s[0]))
+            gas = gas_table[gi]
+            gas_total += gas
+
             if 'LOG' in s[0]:
                 log_number = s[0].split('LOG')[1]
                 stack_sum -= int(log_number) + 2
@@ -372,6 +379,9 @@ def cfg_construction(opcode_data, name, pre_id, nodes, edges, init_tag_num):
 
 
 def symbolic_simulation(nodes, edges):
+    n, e = gas_path(nodes, edges)
+    create_graph(n, e, 'gas_path')
+
     stack = []
     storage = []
     memory = []
@@ -388,6 +398,26 @@ def symbolic_simulation(nodes, edges):
     print('gas SUM = ', gas_sum)
 
     create_graph(c_nodes, c_edges, 'symbolic_simulation')
+
+
+def gas_path(nodes, edges):
+    tmp_n_list = [nodes[0]]
+    tmp_e_list = []
+    for n in nodes:
+        # tmp_e = ()
+        tmp_gas = 0
+        if n in tmp_n_list or len(tmp_n_list) == 0:
+            for e in edges:
+                if e[0][0] == n[0]:
+                    for n1 in nodes:
+                        if e[0][1] == n1[0]:
+                            gas = n1[1].get('label').split('Gas: ')[1]
+                            # print('GAS: ' + gas)
+                            if int(gas) >= tmp_gas:
+                                tmp_e_list.append(e)
+                                tmp_n_list.append(n1)
+
+    return tmp_n_list, tmp_e_list
 
 
 def cycle_detection(nodes, edges):
@@ -487,7 +517,7 @@ def loop_graph(nodes, edges):
 
     print('gas SUM = ', gas_sum)
 
-    create_graph(c_nodes, c_edges, './cfg_constraint/cfg_loop_part_with_constraints_{}'.format(loop_graph_count))
+    create_graph(c_nodes, c_edges, './cfg_constraint/cfg_with_constraints_{}'.format(loop_graph_count))
 
     print('Done')
 
