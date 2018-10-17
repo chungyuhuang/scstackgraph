@@ -90,7 +90,7 @@ def asm_analysis(mode, contract_id):
         pre_id = d[2]
         print('contract id = ', contract_id)
         nodes, edges = cfg_construction(contract_opcode, contract_name, pre_id, nodes, edges, 0)  # 將OPCODE建成CFG
-        db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
+        # db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
 
         n, e = gas_path(nodes, edges)
         create_graph(n, e, 'gas_path')
@@ -407,15 +407,25 @@ def gas_path(nodes, edges):
         # tmp_e = ()
         tmp_gas = 0
         if n in tmp_n_list or len(tmp_n_list) == 0:
+            tmp_e = ()
+            tmp_n = ()
             for e in edges:
                 if e[0][0] == n[0]:
                     for n1 in nodes:
                         if e[0][1] == n1[0]:
                             gas = n1[1].get('label').split('Gas: ')[1]
                             # print('GAS: ' + gas)
-                            if int(gas) >= tmp_gas:
-                                tmp_e_list.append(e)
-                                tmp_n_list.append(n1)
+                            if tmp_gas == 0:
+                                tmp_gas = int(gas)
+                                tmp_e = e
+                                tmp_n = n1
+                            elif int(gas) >= tmp_gas > 0:
+                                tmp_e = e
+                                tmp_n = n1
+            # print(tmp_e, tmp_n)
+            if tmp_e != () and tmp_n != ():
+                tmp_e_list.append(tmp_e)
+                tmp_n_list.append(tmp_n)
 
     return tmp_n_list, tmp_e_list
 
