@@ -2,13 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0ddf3e0a-2de7-4d98-a90f-344d5413d937" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gas_price.py" afterPath="$PROJECT_DIR$/gas_price.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/graph_asm.py" afterPath="$PROJECT_DIR$/graph_asm.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract" afterPath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract.svg" afterPath="$PROJECT_DIR$/img/cfg_full_contract/gcfg_full_contract.svg" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation" afterPath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation.svg" afterPath="$PROJECT_DIR$/img/symbolic_simulation/gsymbolic_simulation.svg" />
     </list>
     <ignored path="solidity_stack_graph.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -43,8 +37,8 @@
       <file leaf-file-name="graph_asm.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/graph_asm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="306">
-              <caret line="414" column="36" selection-start-line="414" selection-start-column="0" selection-end-line="415" selection-end-column="0" />
+            <state relative-caret-position="391">
+              <caret line="94" column="8" selection-start-line="94" selection-start-column="8" selection-end-line="94" selection-end-column="8" />
               <folding>
                 <element signature="e#0#29#0" expanded="true" />
               </folding>
@@ -814,8 +808,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/graph_asm.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="306">
-          <caret line="414" column="36" selection-start-line="414" selection-start-column="0" selection-end-line="415" selection-end-column="0" />
+        <state relative-caret-position="391">
+          <caret line="94" column="8" selection-start-line="94" selection-start-column="8" selection-end-line="94" selection-end-column="8" />
           <folding>
             <element signature="e#0#29#0" expanded="true" />
           </folding>

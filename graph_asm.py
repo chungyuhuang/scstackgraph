@@ -90,8 +90,11 @@ def asm_analysis(mode, contract_id):
         pre_id = d[2]
         print('contract id = ', contract_id)
         nodes, edges = cfg_construction(contract_opcode, contract_name, pre_id, nodes, edges, 0)  # 將OPCODE建成CFG
-        # db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
-        symbolic_simulation(nodes, edges)
+        db.update_status_to_db('CFG_CREATED', 'preprocessing', pre_id, test_mode)  # 更新資料庫中分析狀態
+
+        n, e = gas_path(nodes, edges)
+        create_graph(n, e, 'gas_path')
+        # symbolic_simulation(nodes, edges)
         # cycle_detection(nodes, edges)
 
 
@@ -379,9 +382,6 @@ def cfg_construction(opcode_data, name, pre_id, nodes, edges, init_tag_num):
 
 
 def symbolic_simulation(nodes, edges):
-    n, e = gas_path(nodes, edges)
-    create_graph(n, e, 'gas_path')
-
     stack = []
     storage = []
     memory = []
