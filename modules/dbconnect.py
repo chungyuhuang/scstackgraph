@@ -33,7 +33,7 @@ def load_source_code_from_db():
 def load_assembly_from_db(mode, contract_id):
     conn = connect_to_db()
     cur = conn.cursor()
-
+    print(contract_id)
     if mode == 0:
         try:
             print('--- Querying contract assembly code from DB ---')

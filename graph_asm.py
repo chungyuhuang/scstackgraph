@@ -69,7 +69,7 @@ def main():
                 print('[INFO] Start checking contract.\n')
                 preproc('', src, args.code, 2)
 
-            asm_analysis(2, 1)
+            asm_analysis(2, 56)
     else:
         print('Must use an argument, -i for individual source code, -f use source code from DB')
 
@@ -403,6 +403,7 @@ def symbolic_simulation(nodes, edges):
 def gas_path(nodes, edges):
     tmp_n_list = [nodes[0]]
     tmp_e_list = []
+    gas_sum = 0
     for n in nodes:
         # tmp_e = ()
         tmp_gas = 0
@@ -420,13 +421,16 @@ def gas_path(nodes, edges):
                                 tmp_e = e
                                 tmp_n = n1
                             elif int(gas) >= tmp_gas > 0:
+                                tmp_gas = int(gas)
                                 tmp_e = e
                                 tmp_n = n1
+            gas_sum += tmp_gas
             # print(tmp_e, tmp_n)
             if tmp_e != () and tmp_n != ():
                 tmp_e_list.append(tmp_e)
                 tmp_n_list.append(tmp_n)
 
+    print('GAS SUM: ', gas_sum)
     return tmp_n_list, tmp_e_list
 
 
